@@ -14,7 +14,7 @@ def main():
     notebook = ttk.Notebook(root)
     notebook.pack(fill='both', expand=True, padx=10, pady=10) 
 
-
+###test
 
 
 
@@ -57,44 +57,15 @@ def main():
 
 
     #基本信息标签页
-    tabBasicInfo = ttk.Frame(notebook)
-    notebook.add(tabBasicInfo, text="基本信息")
+    Frame1 = ttk.Frame(notebook)
+    notebook.add(Frame1, text="基本信息和数据")
 
-    basicInfo = ttk.Labelframe(tabBasicInfo, text="基础数据")
+    basicInfo = ttk.Labelframe(Frame1, text="基础数据")
     basicInfo.place(x=10, y=10, width=975, height=300)
 
 
-#    ### 基础数据第一列
-#    globalNameEntry = tk.StringVar()
-#    techEntry = tk.StringVar()
-#    movieEntry = tk.StringVar()
-#    abstractMovieEntry = tk.StringVar()
-#    modelEntry = tk.StringVar()
-#    iconEntry = tk.StringVar()
-#    roundIconEntry = tk.StringVar()
-#    launchMePathIconEntry = tk.StringVar()
-#
-#    
-#    # 列表字典，分别是{提示文本，输入框变量}
-#    colProperty1 = [
-#        ("单位全局名称*:", globalNameEntry),
-#        ("单位科技引用*:", techEntry),
-#        ("俯视图文件路径*:", movieEntry),
-#        ("缩略图文件路径*:", abstractMovieEntry),
-#        ("模型文件路径*:", modelEntry),
-#        ("图标文件路径*:", iconEntry),
-#        ("圆型图标路径:", roundIconEntry),
-#        ("发射图标路径:", launchMePathIconEntry)
-#    ]
-#
-#    for i, (text, entryVar) in enumerate(colProperty1):
-#        x = 25
-#        y = 10+30*i
-#        width = 50
-#        # x即该列x坐标起始点位置，y为每行y坐标起始点位置
-#        ttk.Label(basicInfo, text=text).place(x=x, y=y)
-#        colPropertyEntry1 = ttk.Entry(basicInfo, textvariable=entryVar, width=width)
-#        colPropertyEntry1.place(x=x+100, y=y)
+
+
 
     ### 基础数据第一列
     globalNameEntry = tk.StringVar()
@@ -108,7 +79,7 @@ def main():
 
     
     # 列表字典，分别是{提示文本，输入框变量}
-    colProperty1 = [
+    colBasicInfo1 = [
         ("全局名称:", globalNameEntry),
         ("科技和描述引用:", techEntry),
         ("俯视图文件路径:", movieEntry),
@@ -119,7 +90,7 @@ def main():
         ("发射路径图标路径:", launchMePathIconEntry)
     ]
 
-    for i, (text, entryVar) in enumerate(colProperty1):
+    for i, (text, entryVar) in enumerate(colBasicInfo1):
         x = 25
         y = 10+30*i
         width = 75
@@ -140,7 +111,7 @@ def main():
     iconIDXEntry = tk.StringVar()
     
     # 列表字典，分别是{提示文本，输入框变量，宽度}
-    colBasic1 = [
+    colBasicInfo2 = [
         ("单位类型:", typeEntry, 18, "type"),
         ("爆炸效果:", crashEntry, 18, "crash"),
         ("单位分组:", classEntry, 20, "normal"),
@@ -152,7 +123,7 @@ def main():
 
     ]
 
-    for i, (text, entryVar, width, type) in enumerate(colBasic1):
+    for i, (text, entryVar, width, type) in enumerate(colBasicInfo2):
         x = 515
         y = 10+30*i
         if type == "normal":
@@ -173,7 +144,7 @@ def main():
 
 
 
-    propertyInfo = ttk.Labelframe(tabBasicInfo, text="属性数据")
+    propertyInfo = ttk.Labelframe(Frame1, text="属性数据")
     propertyInfo.place(x=10, y=320, width=530, height=360)
 
     ### 第一列
@@ -250,75 +221,74 @@ def main():
 
 
 
-    customParameters = ttk.Labelframe(tabBasicInfo, text="自定义参数")
+    customParameters = ttk.Labelframe(Frame1, text="自定义参数")
     customParameters.place(x=550, y=320, width=435, height=360)
     
-    table_data = tk.StringVar()
-    tableData = tk.StringVar()
+    customTableData = tk.StringVar()
 
     def add_to_table():
-        if entry1.get().strip():
-            table.insert("", tk.END, values=(entry1.get(), entry2.get()))
-            entry1.delete(0, tk.END)
-            entry2.delete(0, tk.END)
+        if customEntry1.get().strip():
+            customTable.insert("", tk.END, values=(customEntry1.get(), customEntry2.get()))
+            customEntry1.delete(0, tk.END)
+            customEntry2.delete(0, tk.END)
 
     def delete_selected():
-        if table.selection():
-            table.delete(table.selection()[0])
+        if customTable.selection():
+            customTable.delete(customTable.selection()[0])
 
     def print_table():
-        items = table.get_children()
+        items = customTable.get_children()
         if not items:
             print("表格为空")
-            tableData.set("")
+            customTableData.set("")
             return ""
         table_data = ""
         for item in items:
-            values = table.item(item, 'values')
+            values = customTable.item(item, 'values')
             if values:
                 table_data += f"    {values[0]} {values[1]}\n"
-        tableData.set(table_data)
-        print(tableData.get())
+        customTableData.set(table_data)
+        print(customTableData.get())
         return table_data
 
 
     def map_to_entries():
-        selected = table.selection()
+        selected = customTable.selection()
         if selected:
-            values = table.item(selected[0], 'values')
-            entry1.delete(0, tk.END)
-            entry2.delete(0, tk.END)
+            values = customTable.item(selected[0], 'values')
+            customEntry1.delete(0, tk.END)
+            customEntry2.delete(0, tk.END)
             if values:
-                entry1.insert(0, values[0])
+                customEntry1.insert(0, values[0])
                 if len(values) > 1:
-                    entry2.insert(0, values[1])
+                    customEntry2.insert(0, values[1])
 
     def save_to_current_row():
-        selected = table.selection()
+        selected = customTable.selection()
         if not selected:
             add_to_table()  # 无选中行则添加新行
         else:
-            table.item(selected[0], values=(entry1.get(), entry2.get()))
-            entry1.delete(0, tk.END)
-            entry2.delete(0, tk.END)
+            customTable.item(selected[0], values=(customEntry1.get(), customEntry2.get()))
+            customEntry1.delete(0, tk.END)
+            customEntry2.delete(0, tk.END)
 
     # 使用grid布局管理器来避免框架互相干扰
     customSheetFrame = ttk.Frame(customParameters)
     customSheetFrame.grid(row=0, column=0, sticky="nw", padx=5, pady=5) 
 
-    ttk.Label(customSheetFrame, text="输入1:").grid(row=0, column=0, padx=5, pady=1, sticky="w")
-    entry1 = ttk.Entry(customSheetFrame, width=20)
-    entry1.grid(row=1, column=0, padx=5, pady=1)
-    ttk.Label(customSheetFrame, text="输入2:").grid(row=0, column=1, padx=5, pady=1, sticky="w")
-    entry2 = ttk.Entry(customSheetFrame, width=20)
-    entry2.grid(row=1, column=1, padx=5, pady=1)
+    ttk.Label(customSheetFrame, text="参数:").grid(row=0, column=0, padx=5, pady=1, sticky="w")
+    customEntry1 = ttk.Entry(customSheetFrame, width=20)
+    customEntry1.grid(row=1, column=0, padx=5, pady=1)
+    ttk.Label(customSheetFrame, text="值").grid(row=0, column=1, padx=5, pady=1, sticky="w")
+    customEntry2 = ttk.Entry(customSheetFrame, width=20)
+    customEntry2.grid(row=1, column=1, padx=5, pady=1)
 
-    table = ttk.Treeview(customSheetFrame, columns=("col1", "col2"), show="headings", height=12)
-    table.heading("col1", text="列1")
-    table.heading("col2", text="列2")
-    table.column("col1", width=150)
-    table.column("col2", width=150)
-    table.grid(row=2, column=0, columnspan=2, padx=5, pady=5, sticky="we")
+    customTable = ttk.Treeview(customSheetFrame, columns=("col1", "col2"), show="headings", height=12)
+    customTable.heading("col1", text="参数")
+    customTable.heading("col2", text="值")
+    customTable.column("col1", width=150)
+    customTable.column("col2", width=150)
+    customTable.grid(row=2, column=0, columnspan=2, padx=5, pady=5, sticky="we")
 
     customButtonFrame = ttk.Frame(customParameters)
     customButtonFrame.grid(row=0, column=1, sticky="se", padx=1, pady=5)  
@@ -329,11 +299,146 @@ def main():
     ttk.Button(customButtonFrame, text="从选中行读取", command=map_to_entries, width=12).grid(row=2, column=0, padx=5, pady=5)
     ttk.Button(customButtonFrame, text="保存至当前行", command=save_to_current_row, width=12).grid(row=3, column=0, padx=5, pady=5)
 
-    ttk.Button(customButtonFrame, text="debug", command=print_table, width=12).grid(row=4, column=0, padx=5, pady=5)  
+    #ttk.Button(customButtonFrame, text="debug", command=print_table, width=12).grid(row=4, column=0, padx=5, pady=5)  
 
     #scrollbar = ttk.Scrollbar(customSheetFrame, orient="vertical", command=table.yview)
     #table.configure(yscrollcommand=scrollbar.set)
     #scrollbar.place(x=300, y=30, height=105)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    Frame2 = ttk.Frame(notebook)
+    notebook.add(Frame2, text="行为与子单位")
+
+    behaviorCtrl = ttk.Labelframe(Frame2, text="行为控制")
+    behaviorCtrl.place(x=10, y=10, width=350, height=670)
+
+
+    
+    #行为控制标签页
+
+    #DecayTimer
+
+
+    behaviorString = tk.StringVar()
+
+    alwaysVisibleOnEnemyTerritoryCheckbox = tk.BooleanVar()
+    doesNotTriggerWarWhenAttackedCheckbox = tk.BooleanVar()
+    canCrossBorderDuringPeaceTimeCheckBox = tk.BooleanVar()
+    reportAsHostedCheckBox = tk.BooleanVar()
+    targetInPlannerCheckBox = tk.BooleanVar()
+    canAccessGlobalStorageCheckBox = tk.BooleanVar()
+    canHangInTheAirCheckBox = tk.BooleanVar()
+    hideOwnershipCheckBox = tk.BooleanVar()
+    canPatrolPointCheckBox = tk.BooleanVar()
+    autoReturnCheckBox = tk.BooleanVar()
+    doesNotTriggerWarOnAttackCheckBox = tk.BooleanVar()
+    producedByAnotherUnitCheckBox = tk.BooleanVar()
+    fixedRotationAngleCheckBox = tk.BooleanVar()
+    attackOnMoveCheckBox = tk.BooleanVar()
+    hiddenFromAlliesCheckBox = tk.BooleanVar()
+    attackIfDestroyedCheckBox = tk.BooleanVar()
+    attackerInPlannerCheckBox = tk.BooleanVar()
+    noAutoAttackCheckBox = tk.BooleanVar()
+    noAutoAttackSubCheckBox = tk.BooleanVar()
+    slaveCheckBox = tk.BooleanVar()
+    canAccessWeaponStockpileCheckBox = tk.BooleanVar()
+    canAccessUnitStockpileCheckBox = tk.BooleanVar()
+    showDisabledOnDeploymentMarkerCheckBox = tk.BooleanVar()
+    destroyOnFactionSurrenderCheckBox = tk.BooleanVar()
+    ass = tk.BooleanVar()
+
+
+    behaviorMaps = [
+        ("在敌方领土可见", "AlwaysVisibleOnEnemyTerritory", alwaysVisibleOnEnemyTerritoryCheckbox, "Boolean", "Normal"),
+        ("受击不触发战争", "DoesNotTriggerWarWhenAttacked", doesNotTriggerWarWhenAttackedCheckbox, "Boolean", "HideWhenFalse"),
+        ("和平时期可跨越边界", "CanCrossBorderDuringPeaceTime", canCrossBorderDuringPeaceTimeCheckBox, "Boolean", "Normal"),
+        ("显示被装载于母单位", "ReportAsHosted", reportAsHostedCheckBox, "Boolean", "HideWhenFalse"),
+        ("在被攻击名单中", "TargetInPlanner", targetInPlannerCheckBox, "Boolean", "HideWhenFalse"),
+        ("可访问全局武库", "CanAccessGlobalStorage", canAccessGlobalStorageCheckBox, "Boolean", "Normal"),
+        ("可以访问本地武库", "CanAccessWeaponStockpile", canAccessWeaponStockpileCheckBox, "Boolean", "Normal"),
+        ("可以访问单位武库", "CanAccessUnitStockpile", canAccessUnitStockpileCheckBox, "Boolean", "Normal"),
+        ("可悬停（空中单位）", "CanHangInTheAir", canHangInTheAirCheckBox, "Boolean", "HideWhenFalse"),
+        ("隐藏所有者阵营", "HideOwnership", hideOwnershipCheckBox, "Boolean", "Normal"),
+        ("可设置巡逻点", "CanPatrolPoint", canPatrolPointCheckBox, "Boolean", "HideWhenFalse"),
+        ("自动返回母单位", "AutoReturn", autoReturnCheckBox, "Boolean", "HideWhenFalse"),
+        ("攻击不触发战争", "DoesNotTriggerWarOnAttack", doesNotTriggerWarOnAttackCheckBox, "Boolean", "Normal"),
+        ("由其他单位生产", "ProducedByAnotherUnit", producedByAnotherUnitCheckBox, "Boolean", "HideWhenFalse"),
+        ("固定朝向（建筑物）", "FixedRotationAngle", fixedRotationAngleCheckBox, "Boolean", "HideWhenFalse"),
+        ("移动时可攻击", "AttackOnMove", attackOnMoveCheckBox, "Boolean", "HideWhenFalse"),
+        ("部署时显示禁用", "ShowDisabledOnDeploymentMarker", showDisabledOnDeploymentMarkerCheckBox, "Boolean", "HideWhenFalse"),
+        ("投降后自动摧毁", "DestroyOnFactionSurrender", destroyOnFactionSurrenderCheckBox, "Boolean", "HideWhenFalse"),
+        ("对盟友隐藏", "HiddenFromAllies", hiddenFromAlliesCheckBox, "Existed", "HideWhenFalse"),
+        ("被摧毁时反击", "AttackIfDestroyed", attackIfDestroyedCheckBox, "Existed", "HideWhenFalse"),
+        ("在攻击者名单中", "AttackerInPlanner", attackerInPlannerCheckBox, "Existed", "HideWhenFalse"),
+        ("不自动攻击敌方单位", "NoAutoAttack", noAutoAttackCheckBox, "Existed", "Normal"),
+        ("不自动攻击潜艇单位", "NoAutoAttackSub", noAutoAttackSubCheckBox, "Existed", "Normal"),
+        ("附属于母单位", "Slave", slaveCheckBox, "Existed", "HideWhenFalse")
+    ]
+
+    def booleanCheckBoxCommand():    
+        behaviorData = ""
+        for i, (text, text2, Var, type, hide) in enumerate(behaviorMaps):
+            if Var.get():
+                if type == "Boolean":
+                    behaviorData += f"    {text2} True\n"
+                if type == "Existed":
+                    behaviorData += f"    {text2}\n"
+            else:
+                if hide == "HideWhenFalse":
+                    behaviorData += f""
+                else:
+                    behaviorData += f"    {text2} False\n"
+            behaviorString.set(behaviorData)
+        #print(behaviorString.get())
+
+            
+
+    for i, (text, text2, Var, type, hide) in enumerate(behaviorMaps):
+        nextCol = 19
+        if i < nextCol :
+            row = i
+            col = 0
+        if i >= nextCol:
+            row = i-nextCol
+            col = 1
+        if  type == "Boolean":
+            ttk.Checkbutton(behaviorCtrl, text=text, variable=Var, command=booleanCheckBoxCommand).grid(row=row, column=col, padx=15, pady=5, sticky="w")
+        elif type == "Existed":
+            ttk.Checkbutton(behaviorCtrl, text=text, variable=Var, command=booleanCheckBoxCommand).grid(row=row, column=col, padx=15, pady=5, sticky="w")
+        else:
+            print("DEBUG_TPYE")
+
+
+
+    behaviorCtrl = ttk.Labelframe(Frame2, text="允许生产的单位")
+    behaviorCtrl.place(x=370, y=10, width=205, height=330)
+
+    behaviorCtrl = ttk.Labelframe(Frame2, text="子单位")
+    behaviorCtrl.place(x=585, y=10, width=400, height=330)    
+
+    behaviorCtrl = ttk.Labelframe(Frame2, text="允许搭载的单位")
+    behaviorCtrl.place(x=370, y=350, width=615, height=330)
 
 
 
@@ -416,10 +521,37 @@ def main():
             maxNumberToOrderEntry.set("")
             hangarSpaceRequiredEntry.set("")
             hangarMaxLoadEntry.set("")
-            tableData.set("")
+            customTableData.set("")
+
+            alwaysVisibleOnEnemyTerritoryCheckbox.set(False)
+            doesNotTriggerWarWhenAttackedCheckbox.set(False)
+            canCrossBorderDuringPeaceTimeCheckBox.set(False)
+            reportAsHostedCheckBox.set(False)
+            targetInPlannerCheckBox.set(False)
+            canAccessGlobalStorageCheckBox.set(False)
+            canHangInTheAirCheckBox.set(False)
+            hideOwnershipCheckBox.set(False)
+            canPatrolPointCheckBox.set(False)
+            autoReturnCheckBox.set(False)
+            doesNotTriggerWarOnAttackCheckBox.set(False)
+            producedByAnotherUnitCheckBox.set(False)
+            fixedRotationAngleCheckBox.set(False)
+            attackOnMoveCheckBox.set(False)
+            hiddenFromAlliesCheckBox.set(False)
+            attackIfDestroyedCheckBox.set(False)
+            attackerInPlannerCheckBox.set(False)
+            noAutoAttackCheckBox.set(False)
+            noAutoAttackSubCheckBox.set(False)
+            slaveCheckBox.set(False)
+            canAccessWeaponStockpileCheckBox.set(False)
+            canAccessUnitStockpileCheckBox.set(False)
+            showDisabledOnDeploymentMarkerCheckBox.set(False)
+            destroyOnFactionSurrenderCheckBox.set(False)
+
+
             # 清空表格中的所有行
-            for item in table.get_children():
-                table.delete(item)
+            for item in customTable.get_children():
+                customTable.delete(item)
     
 
 
@@ -434,6 +566,7 @@ def main():
     #应用按钮
     def fillDefault():
         askFillDefault = messagebox.askokcancel("填充默认值", "是否确认填充默认值？这将覆盖当前所有输入内容，此操作不可撤销。")
+        booleanCheckBoxCommand()
         if askFillDefault:
             globalNameEntry.set("U_NameExample")
             techEntry.set("T_TechExample")
@@ -471,12 +604,37 @@ def main():
             maxNumberToOrderEntry.set("5")
             hangarSpaceRequiredEntry.set("1")
             hangarMaxLoadEntry.set("")
+
+            alwaysVisibleOnEnemyTerritoryCheckbox.set(False)
+            doesNotTriggerWarWhenAttackedCheckbox.set(False)
+            canCrossBorderDuringPeaceTimeCheckBox.set(False)
+            reportAsHostedCheckBox.set(False)
+            targetInPlannerCheckBox.set(True)
+            canAccessGlobalStorageCheckBox.set(False)
+            canHangInTheAirCheckBox.set(False)
+            hideOwnershipCheckBox.set(False)
+            canPatrolPointCheckBox.set(False)
+            autoReturnCheckBox.set(False)
+            doesNotTriggerWarOnAttackCheckBox.set(False)
+            producedByAnotherUnitCheckBox.set(False)
+            fixedRotationAngleCheckBox.set(False)
+            attackOnMoveCheckBox.set(False)
+            hiddenFromAlliesCheckBox.set(False)
+            attackIfDestroyedCheckBox.set(True)
+            attackerInPlannerCheckBox.set(True)
+            noAutoAttackCheckBox.set(False)
+            noAutoAttackSubCheckBox.set(False)
+            slaveCheckBox.set(False)
+            canAccessWeaponStockpileCheckBox.set(False)
+            canAccessUnitStockpileCheckBox.set(False)
+            showDisabledOnDeploymentMarkerCheckBox.set(False)
+            destroyOnFactionSurrenderCheckBox.set(False)
             
             # 清空表格并添加示例文本
-            for item in table.get_children():
-                table.delete(item)
-            table.insert("", tk.END, values=("/TestOption1", "Value1"))
-            table.insert("", tk.END, values=("/TestOption2", "Value2"))
+            for item in customTable.get_children():
+                customTable.delete(item)
+            customTable.insert("", tk.END, values=("/TestOption1", "Value1"))
+            customTable.insert("", tk.END, values=("/TestOption2", "Value2"))
             
 
     #生成代码按钮
@@ -550,7 +708,9 @@ def main():
             f"{maxNumberToOrderString.get()}"
             f"{hangarMaxLoadString.get()}"
             f"{hangarSpaceRequiredString.get()}"
-            f"{tableData.get()}"
+            f"{customTableData.get()}"
+            f"\n"
+            f"{behaviorString.get()}"
         )
 
         OPUS.insert(END, outputUnitString)
@@ -707,13 +867,13 @@ def main():
     #调试用
     
     
-    globalButtonFrame = ttk.Frame(tabBasicInfo)
+    globalButtonFrame = ttk.Frame(Frame1)
     globalButtonFrame.pack(side="bottom", anchor="se", padx=10, pady=1)    
     
     ttk.Button(globalButtonFrame, command=cancelNameString, text="清除").grid(row=0, column=1, padx=5, pady=5)
     ttk.Button(globalButtonFrame, command=fillDefault, text="默认").grid(row=0, column=2, padx=5, pady=5)
     ttk.Button(globalButtonFrame, command=generateCode, text="生成").grid(row=0, column=3, padx=5, pady=5)
-    ttk.Button(globalButtonFrame, command=debug, text="debug").grid(row=0, column=0, padx=5, pady=5)
+    # ttk.Button(globalButtonFrame, command=debug, text="debug").grid(row=0, column=0, padx=5, pady=5)
 
 
 
