@@ -227,17 +227,17 @@ def main():
     
     customTableData = tk.StringVar()
 
-    def add_to_table():
+    def customAddToTable():
         if customEntry1.get().strip():
             customTable.insert("", tk.END, values=(customEntry1.get(), customEntry2.get()))
             customEntry1.delete(0, tk.END)
             customEntry2.delete(0, tk.END)
 
-    def delete_selected():
+    def customDeleteSelected():
         if customTable.selection():
             customTable.delete(customTable.selection()[0])
 
-    def print_table():
+    def customOutputTable():
         items = customTable.get_children()
         if not items:
             print("表格为空")
@@ -253,7 +253,7 @@ def main():
         return table_data
 
 
-    def map_to_entries():
+    def customMapToEntries():
         selected = customTable.selection()
         if selected:
             values = customTable.item(selected[0], 'values')
@@ -264,10 +264,10 @@ def main():
                 if len(values) > 1:
                     customEntry2.insert(0, values[1])
 
-    def save_to_current_row():
+    def customSaveToCurrentRow():
         selected = customTable.selection()
         if not selected:
-            add_to_table()  # 无选中行则添加新行
+            customAddToTable()  # 无选中行则添加新行
         else:
             customTable.item(selected[0], values=(customEntry1.get(), customEntry2.get()))
             customEntry1.delete(0, tk.END)
@@ -278,33 +278,38 @@ def main():
     customSheetFrame.grid(row=0, column=0, sticky="nw", padx=5, pady=5) 
 
     ttk.Label(customSheetFrame, text="参数:").grid(row=0, column=0, padx=5, pady=1, sticky="w")
-    customEntry1 = ttk.Entry(customSheetFrame, width=20)
+    customEntry1 = ttk.Entry(customSheetFrame, width=18)
     customEntry1.grid(row=1, column=0, padx=5, pady=1)
     ttk.Label(customSheetFrame, text="值").grid(row=0, column=1, padx=5, pady=1, sticky="w")
-    customEntry2 = ttk.Entry(customSheetFrame, width=20)
+    customEntry2 = ttk.Entry(customSheetFrame, width=18)
     customEntry2.grid(row=1, column=1, padx=5, pady=1)
 
     customTable = ttk.Treeview(customSheetFrame, columns=("col1", "col2"), show="headings", height=12)
     customTable.heading("col1", text="参数")
     customTable.heading("col2", text="值")
-    customTable.column("col1", width=150)
-    customTable.column("col2", width=150)
-    customTable.grid(row=2, column=0, columnspan=2, padx=5, pady=5, sticky="we")
+    customTable.column("col1", width=140)
+    customTable.column("col2", width=140)
+    customTable.grid(row=2, column=0, columnspan=2, padx=5, pady=5, sticky="nsew")
 
     customButtonFrame = ttk.Frame(customParameters)
     customButtonFrame.grid(row=0, column=1, sticky="se", padx=1, pady=5)  
 
-    ttk.Button(customButtonFrame, text="添加至表格", command=add_to_table, width=12).grid(row=0, column=0, padx=5, pady=5)
-    ttk.Button(customButtonFrame, text="删除选中行", command=delete_selected, width=12).grid(row=1, column=0, padx=5, pady=5)
+    ttk.Button(customButtonFrame, text="添加至表格", command=customAddToTable, width=12).grid(row=0, column=0, padx=5, pady=5)
+    ttk.Button(customButtonFrame, text="删除选中行", command=customDeleteSelected, width=12).grid(row=1, column=0, padx=5, pady=5)
 
-    ttk.Button(customButtonFrame, text="从选中行读取", command=map_to_entries, width=12).grid(row=2, column=0, padx=5, pady=5)
-    ttk.Button(customButtonFrame, text="保存至当前行", command=save_to_current_row, width=12).grid(row=3, column=0, padx=5, pady=5)
+    ttk.Button(customButtonFrame, text="从选中行读取", command=customMapToEntries, width=12).grid(row=2, column=0, padx=5, pady=5)
+    ttk.Button(customButtonFrame, text="保存至当前行", command=customSaveToCurrentRow, width=12).grid(row=3, column=0, padx=5, pady=5)
 
-    #ttk.Button(customButtonFrame, text="debug", command=print_table, width=12).grid(row=4, column=0, padx=5, pady=5)  
+    ttk.Button(customButtonFrame, text="debug", command=customOutputTable, width=12).grid(row=4, column=0, padx=5, pady=5)  
 
-    #scrollbar = ttk.Scrollbar(customSheetFrame, orient="vertical", command=table.yview)
-    #table.configure(yscrollcommand=scrollbar.set)
-    #scrollbar.place(x=300, y=30, height=105)
+    # 创建自定义参数表格的滚动条
+    customScrollbar = ttk.Scrollbar(customSheetFrame, orient="vertical", command=customTable.yview)
+    customTable.configure(yscrollcommand=customScrollbar.set)
+    customScrollbar.grid(row=2, column=2, padx=(0, 5), pady=5, sticky="ns")
+    
+    # 配置网格权重使表格可以扩展
+    customSheetFrame.grid_rowconfigure(2, weight=1)
+    customSheetFrame.grid_columnconfigure(0, weight=1)
 
 
 
@@ -432,14 +437,105 @@ def main():
 
 
 
-    behaviorCtrl = ttk.Labelframe(Frame2, text="允许生产的单位")
-    behaviorCtrl.place(x=370, y=10, width=205, height=330)
+    producesFrame = ttk.Labelframe(Frame2, text="允许生产的单位")
+    producesFrame.place(x=370, y=10, width=205, height=330)
 
-    behaviorCtrl = ttk.Labelframe(Frame2, text="子单位")
-    behaviorCtrl.place(x=585, y=10, width=400, height=330)    
+    producesTableData = tk.StringVar()
 
-    behaviorCtrl = ttk.Labelframe(Frame2, text="允许搭载的单位")
-    behaviorCtrl.place(x=370, y=350, width=615, height=330)
+    def producesAddToTable():
+        if producesEntry1.get().strip():
+            producesTable.insert("", tk.END, values=(producesEntry1.get()))
+            producesEntry1.delete(0, tk.END)
+
+    def producesDeleteSelected():
+        selected = producesTable.selection()
+        if selected:
+            producesTable.delete(selected[0])
+    def producesOutputTable():
+        items = producesTable.get_children()
+        if not items:
+            print("表格为空")
+            producesTableData.set("")
+            return ""
+        table_data = ""
+        for item in items:
+            values = producesTable.item(item, 'values')
+            if values:
+                table_data += f"    Produces \"{values[0]}\"\n"
+        producesTableData.set(table_data)
+        print(producesTableData.get())
+        return table_data
+
+
+    def producesMapToEntries():
+        selected = producesTable.selection()
+        if selected:
+            values = producesTable.item(selected[0], 'values')
+            producesEntry1.delete(0, tk.END)
+            if values:
+                producesEntry1.insert(0, values[0])
+
+    def producesSaveToCurrentRow():
+        selected = producesTable.selection()
+        if not selected:
+            producesAddToTable()  # 无选中行则添加新行
+        else:
+            producesTable.item(selected[0], values=producesEntry1.get())
+            producesEntry1.delete(0, tk.END)
+
+    # 使用grid布局管理器来避免框架互相干扰
+    producesSheetFrame = ttk.Frame(producesFrame)
+    producesSheetFrame.grid(row=0, column=0, sticky="nw", padx=5, pady=5) 
+
+    ttk.Label(producesSheetFrame, text="单位:").grid(row=0, column=0, padx=5, pady=1, sticky="w")
+    producesEntry1 = ttk.Entry(producesSheetFrame, width=20)
+    producesEntry1.grid(row=1, column=0, padx=5, pady=1)
+
+
+    # 创建表格和滚动条
+    producesTable = ttk.Treeview(producesSheetFrame, columns=("col1"), show="headings", height=7)
+    producesTable.heading("col1", text="单位")
+    producesTable.column("col1", width=140)
+    
+    # 创建垂直滚动条
+    producesScrollbar = ttk.Scrollbar(producesSheetFrame, orient="vertical", command=producesTable.yview)
+    producesTable.configure(yscrollcommand=producesScrollbar.set)
+    
+    # 使用grid布局放置表格和滚动条
+    producesTable.grid(row=2, column=0, padx=5, pady=5, sticky="nsew")
+    producesScrollbar.grid(row=2, column=1, padx=(0, 5), pady=5, sticky="ns")
+    
+    # 配置网格权重使表格可以扩展
+    producesSheetFrame.grid_rowconfigure(2, weight=1)
+    producesSheetFrame.grid_columnconfigure(0, weight=1)
+
+    producesButtonFrame = ttk.Frame(producesFrame)
+    producesButtonFrame.grid(row=3, column=0, sticky="s", padx=5, pady=5)  
+
+    ttk.Button(producesSheetFrame, text="+", command=producesAddToTable, width=3).grid(row=0, column=1, padx=5, pady=5)
+    ttk.Button(producesSheetFrame, text="-", command=producesDeleteSelected, width=3).grid(row=1, column=1, padx=5, pady=5)
+
+    ttk.Button(producesButtonFrame, text="读取选中项", command=producesMapToEntries, width=10).grid(row=0, column=0, padx=5, pady=5)
+    ttk.Button(producesButtonFrame, text="保存至选中项", command=producesSaveToCurrentRow, width=12).grid(row=0, column=1, padx=5, pady=5)
+
+    ttk.Button(Frame2, text="debug", command=producesOutputTable, width=10).place(x=900, y=680)
+
+
+
+
+    canCarryUnitFrame = ttk.Labelframe(Frame2, text="允许搭载的单位")
+    canCarryUnitFrame.place(x=585, y=10, width=400, height=330) 
+
+
+
+    canHostAircraftsFrame = ttk.Labelframe(Frame2, text="子单位")
+    canHostAircraftsFrame.place(x=370, y=350, width=615, height=330)   
+
+
+
+
+
+
 
 
 
@@ -523,6 +619,7 @@ def main():
             hangarSpaceRequiredEntry.set("")
             hangarMaxLoadEntry.set("")
             customTableData.set("")
+            producesTableData.set("")
 
             alwaysVisibleOnEnemyTerritoryCheckbox.set(False)
             doesNotTriggerWarWhenAttackedCheckbox.set(False)
@@ -553,6 +650,9 @@ def main():
             # 清空表格中的所有行
             for item in customTable.get_children():
                 customTable.delete(item)
+
+            for item in producesTable.get_children():
+                producesTable.delete(item)
     
 
 
@@ -636,6 +736,10 @@ def main():
                 customTable.delete(item)
             customTable.insert("", tk.END, values=("/TestOption1", "Value1"))
             customTable.insert("", tk.END, values=("/TestOption2", "Value2"))
+
+            for item in producesTable.get_children():
+                producesTable.delete(item)
+            producesTable.insert("", tk.END, values=("SubUnit"))
             
 
     #生成代码按钮
@@ -645,6 +749,7 @@ def main():
     def generateCode():
         # 先把各项检查并生成对应的 StringVar 内容
         checkBasicData()
+        producesOutputTable()  # 确保生产单位表格数据已更新
 
         if (globalNameEntry.get() == "" or
             techEntry.get() == "" or
@@ -712,6 +817,7 @@ def main():
             f"{customTableData.get()}"
             f"\n"
             f"{behaviorString.get()}"
+            f"{producesTableData.get()}"
         )
 
         OPUS.insert(END, outputUnitString)
@@ -810,7 +916,7 @@ def main():
 
 
     def checkBasicData():
-        print_table()
+        customOutputTable()
         for i, (text, entryVar, stringVar, checkType) in enumerate(checkMap):
             if checkType == "Name":
                 if globalNameEntry.get() ==  "":
