@@ -1,4 +1,4 @@
-***ICBM:Escalation 单位数据生成程序***
+***【正在构建】 ICBM:Escalation 单位数据生成程序***
 -----
   如你所见，这是一个用于生成《ICBM:Escalation》单位数据的一个简易的Python GUI（Tkinter）程序。这是我接触Python的后的第一个Demo，大概率算是屎山代码，但我会尽量保证基本功能没问题。
   
