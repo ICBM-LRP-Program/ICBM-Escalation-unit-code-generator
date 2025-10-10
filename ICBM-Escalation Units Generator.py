@@ -11,8 +11,12 @@ def main():
     root = tk.Tk()
     root.title("ICBM: Escalation Unit Generator")
 
-    notebook = ttk.Notebook(root)
-    notebook.pack(fill='both', expand=True, padx=10, pady=10) 
+    # 创建主容器来更好地控制布局
+    mainFrame = ttk.Frame(root)
+    mainFrame.pack(fill='both', expand=True, padx=10, pady=10)
+
+    notebook = ttk.Notebook(mainFrame)
+    notebook.pack(fill='both', expand=True)
 
 ###test
 ### 2025/10/10-15:43
@@ -462,7 +466,7 @@ def main():
             values = producesTable.item(item, 'values')
             if values:
                 table_data += f"    Produces \"{values[0]}\"\n"
-        producesTableData.set(table_data)
+        producesTableData.set(f"\n{table_data.get()}")
         print(producesTableData.get())
         return table_data
 
@@ -518,7 +522,6 @@ def main():
     ttk.Button(producesButtonFrame, text="读取选中项", command=producesMapToEntries, width=10).grid(row=0, column=0, padx=5, pady=5)
     ttk.Button(producesButtonFrame, text="保存至选中项", command=producesSaveToCurrentRow, width=12).grid(row=0, column=1, padx=5, pady=5)
 
-    ttk.Button(Frame2, text="debug", command=producesOutputTable, width=10).place(x=900, y=680)
 
 
 
@@ -815,9 +818,10 @@ def main():
             f"{hangarMaxLoadString.get()}"
             f"{hangarSpaceRequiredString.get()}"
             f"{customTableData.get()}"
+            f"{producesTableData.get()}"
             f"\n"
             f"{behaviorString.get()}"
-            f"{producesTableData.get()}"
+            
         )
 
         OPUS.insert(END, outputUnitString)
@@ -974,29 +978,30 @@ def main():
     #调试用
     
     
-    globalButtonFrame = ttk.Frame(Frame1)
-    globalButtonFrame.pack(side="bottom", anchor="se", padx=10, pady=1)    
+
+
+
+
+
+
+
+
+
+
+    # 创建全局按钮框架（在所有标签页中共享，位于右下角）
+    globalButtonFrame = ttk.Frame(mainFrame)
+    globalButtonFrame.pack(side="bottom", anchor="se", padx=5, pady=5)
     
-    ttk.Button(globalButtonFrame, command=cancelNameString, text="清除").grid(row=0, column=1, padx=5, pady=5)
-    ttk.Button(globalButtonFrame, command=fillDefault, text="默认").grid(row=0, column=2, padx=5, pady=5)
-    ttk.Button(globalButtonFrame, command=generateCode, text="生成").grid(row=0, column=3, padx=5, pady=5)
-    # ttk.Button(globalButtonFrame, command=debug, text="debug").grid(row=0, column=0, padx=5, pady=5)
-
-
-
-
-
-
-
-
-
+    ttk.Button(globalButtonFrame, command=cancelNameString, text="清除").pack(side="left", padx=5)
+    ttk.Button(globalButtonFrame, command=fillDefault, text="默认").pack(side="left", padx=5)
+    ttk.Button(globalButtonFrame, command=generateCode, text="生成").pack(side="left", padx=5)
 
     screenSize = root.maxsize()
     print(screenSize)
     Width, High = screenSize
 
 
-    root.geometry(f"1024x768+{int(Width*.5-512)}+{int(High*.5-384)}")
+    root.geometry(f"1024x775+{int(Width*.5-600)}+{int(High*.5-600)}")
     root.resizable(False, False)
 
     root.mainloop()
