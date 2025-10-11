@@ -299,12 +299,12 @@ def main():
     customButtonFrame.grid(row=0, column=1, sticky="se", padx=1, pady=5)  
 
     ttk.Button(customButtonFrame, text="添加至表格", command=customAddToTable, width=12).grid(row=0, column=0, padx=5, pady=5)
-    ttk.Button(customButtonFrame, text="删除选中行", command=customDeleteSelected, width=12).grid(row=1, column=0, padx=5, pady=5)
+    ttk.Button(customButtonFrame, text="删除选中项", command=customDeleteSelected, width=12).grid(row=1, column=0, padx=5, pady=5)
 
-    ttk.Button(customButtonFrame, text="从选中行读取", command=customMapToEntries, width=12).grid(row=2, column=0, padx=5, pady=5)
-    ttk.Button(customButtonFrame, text="保存至当前行", command=customSaveToCurrentRow, width=12).grid(row=3, column=0, padx=5, pady=5)
+    ttk.Button(customButtonFrame, text="读取选中项", command=customMapToEntries, width=12).grid(row=2, column=0, padx=5, pady=5)
+    ttk.Button(customButtonFrame, text="保存至选中项", command=customSaveToCurrentRow, width=12).grid(row=3, column=0, padx=5, pady=5)
 
-    ttk.Button(customButtonFrame, text="debug", command=customOutputTable, width=12).grid(row=4, column=0, padx=5, pady=5)  
+    # ttk.Button(customButtonFrame, text="debug", command=customOutputTable, width=12).grid(row=4, column=0, padx=5, pady=5)  
 
     # 创建自定义参数表格的滚动条
     customScrollbar = ttk.Scrollbar(customSheetFrame, orient="vertical", command=customTable.yview)
@@ -442,7 +442,7 @@ def main():
 
 
     producesFrame = ttk.Labelframe(Frame2, text="允许生产的单位")
-    producesFrame.place(x=370, y=10, width=205, height=330)
+    producesFrame.place(x=370, y=10, width=300, height=330)
 
     producesTableData = tk.StringVar()
 
@@ -466,7 +466,7 @@ def main():
             values = producesTable.item(item, 'values')
             if values:
                 table_data += f"    Produces \"{values[0]}\"\n"
-        producesTableData.set(f"\n{table_data.get()}")
+        producesTableData.set(f"\n{table_data}")
         print(producesTableData.get())
         return table_data
 
@@ -492,14 +492,14 @@ def main():
     producesSheetFrame.grid(row=0, column=0, sticky="nw", padx=5, pady=5) 
 
     ttk.Label(producesSheetFrame, text="单位:").grid(row=0, column=0, padx=5, pady=1, sticky="w")
-    producesEntry1 = ttk.Entry(producesSheetFrame, width=20)
+    producesEntry1 = ttk.Entry(producesSheetFrame, width=32)
     producesEntry1.grid(row=1, column=0, padx=5, pady=1)
 
 
     # 创建表格和滚动条
     producesTable = ttk.Treeview(producesSheetFrame, columns=("col1"), show="headings", height=7)
     producesTable.heading("col1", text="单位")
-    producesTable.column("col1", width=140)
+    producesTable.column("col1", width=22)
     
     # 创建垂直滚动条
     producesScrollbar = ttk.Scrollbar(producesSheetFrame, orient="vertical", command=producesTable.yview)
@@ -514,11 +514,9 @@ def main():
     producesSheetFrame.grid_columnconfigure(0, weight=1)
 
     producesButtonFrame = ttk.Frame(producesFrame)
-    producesButtonFrame.grid(row=3, column=0, sticky="s", padx=5, pady=5)  
-
+    producesButtonFrame.grid(row=3, column=0, sticky="sw", padx=5, pady=5)  
     ttk.Button(producesSheetFrame, text="+", command=producesAddToTable, width=3).grid(row=0, column=1, padx=5, pady=5)
     ttk.Button(producesSheetFrame, text="-", command=producesDeleteSelected, width=3).grid(row=1, column=1, padx=5, pady=5)
-
     ttk.Button(producesButtonFrame, text="读取选中项", command=producesMapToEntries, width=10).grid(row=0, column=0, padx=5, pady=5)
     ttk.Button(producesButtonFrame, text="保存至选中项", command=producesSaveToCurrentRow, width=12).grid(row=0, column=1, padx=5, pady=5)
 
@@ -527,15 +525,146 @@ def main():
 
 
     canCarryUnitFrame = ttk.Labelframe(Frame2, text="允许搭载的单位")
-    canCarryUnitFrame.place(x=585, y=10, width=400, height=330) 
+    canCarryUnitFrame.place(x=680, y=10, width=305, height=330) 
+
+    canCarryUnitTableData = tk.StringVar()
+
+    def canCarryUnitAddToTable():
+        if canCarryUnitEntry1.get().strip():
+            canCarryUnitTable.insert("", tk.END, values=(canCarryUnitEntry1.get()))
+            canCarryUnitEntry1.delete(0, tk.END)
+
+    def canCarryUnitDeleteSelected():
+        selected = canCarryUnitTable.selection()
+        if selected:
+            canCarryUnitTable.delete(selected[0])
+    def canCarryUnitOutputTable():
+        items = canCarryUnitTable.get_children()
+        if not items:
+            print("表格为空")
+            canCarryUnitTableData.set("")
+            return ""
+        table_data = ""
+        for item in items:
+            values = canCarryUnitTable.item(item, 'values')
+            if values:
+                table_data += f"    CanCarryUnit \"{values[0]}\"\n"
+        canCarryUnitTableData.set(f"\n{table_data}")
+        print(canCarryUnitTableData.get())
+        return table_data
+
+
+    def canCarryUnitMapToEntries():
+        selected = canCarryUnitTable.selection()
+        if selected:
+            values = canCarryUnitTable.item(selected[0], 'values')
+            canCarryUnitEntry1.delete(0, tk.END)
+            if values:
+                canCarryUnitEntry1.insert(0, values[0])
+
+    def canCarryUnitSaveToCurrentRow():
+        selected = canCarryUnitTable.selection()
+        if not selected:
+            canCarryUnitAddToTable()  # 无选中行则添加新行
+        else:
+            canCarryUnitTable.item(selected[0], values=canCarryUnitEntry1.get())
+            canCarryUnitEntry1.delete(0, tk.END)
+
+    # 使用grid布局管理器来避免框架互相干扰
+    canCarryUnitSheetFrame = ttk.Frame(canCarryUnitFrame)
+    canCarryUnitSheetFrame.grid(row=0, column=0, sticky="nw", padx=5, pady=5) 
+
+    ttk.Label(canCarryUnitSheetFrame, text="单位:").grid(row=0, column=0, padx=5, pady=1, sticky="w")
+    canCarryUnitEntry1 = ttk.Entry(canCarryUnitSheetFrame, width=34)
+    canCarryUnitEntry1.grid(row=1, column=0, padx=5, pady=1)
+
+
+    # 创建表格和滚动条
+    canCarryUnitTable = ttk.Treeview(canCarryUnitSheetFrame, columns=("col1"), show="headings", height=7)
+    canCarryUnitTable.heading("col1", text="单位")
+    canCarryUnitTable.column("col1", width=240)
+    
+    # 创建垂直滚动条
+    canCarryUnitScrollbar = ttk.Scrollbar(canCarryUnitSheetFrame, orient="vertical", command=canCarryUnitTable.yview)
+    canCarryUnitTable.configure(yscrollcommand=canCarryUnitScrollbar.set)
+    
+    # 使用grid布局放置表格和滚动条
+    canCarryUnitTable.grid(row=2, column=0, padx=5, pady=5, sticky="nsew")
+    canCarryUnitScrollbar.grid(row=2, column=1, padx=(0, 5), pady=5, sticky="ns")
+    
+    # 配置网格权重使表格可以扩展
+    canCarryUnitSheetFrame.grid_rowconfigure(2, weight=1)
+    canCarryUnitSheetFrame.grid_columnconfigure(0, weight=1)
+
+    canCarryUnitButtonFrame = ttk.Frame(canCarryUnitFrame)
+    canCarryUnitButtonFrame.grid(row=3, column=0, sticky="sw", padx=5, pady=5)  
+    ttk.Button(canCarryUnitSheetFrame, text="+", command=canCarryUnitAddToTable, width=3).grid(row=0, column=1, padx=5, pady=5)
+    ttk.Button(canCarryUnitSheetFrame, text="-", command=canCarryUnitDeleteSelected, width=3).grid(row=1, column=1, padx=5, pady=5)
+    ttk.Button(canCarryUnitButtonFrame, text="读取选中项", command=canCarryUnitMapToEntries, width=10).grid(row=0, column=0, padx=5, pady=5)
+    ttk.Button(canCarryUnitButtonFrame, text="保存至选中项", command=canCarryUnitSaveToCurrentRow, width=12).grid(row=0, column=1, padx=5, pady=5)
+
+
+
 
 
 
     canHostAircraftsFrame = ttk.Labelframe(Frame2, text="子单位")
-    canHostAircraftsFrame.place(x=370, y=350, width=615, height=330)   
+    canHostAircraftsFrame.place(x=370, y=350, width=615, height=330)  
+
+    airwaySheetFrame = ttk.Frame(canHostAircraftsFrame)
+    airwaySheetFrame.grid(row=0, column=0, sticky="nw", padx=5, pady=5) 
+
+    def debug2():
+        print("debug2")
+
+    def airwayConfig():
+        print("airwayIsConfigNow")
 
 
 
+
+    canHostAircraftsTableData = tk.StringVar()  
+
+
+
+
+
+
+    airwayTable = ttk.Treeview(airwaySheetFrame, columns=("col1", "col2"), show="headings", height=7)
+    airwayTable.heading("col1", text="单次发射数")
+    airwayTable.heading("col2", text="时间间隔")
+    airwayTable.column("col1", width=90)
+    airwayTable.column("col2", width=90)
+    airwayTable.grid(row=2, column=0, columnspan=2, padx=5, pady=5, sticky="nsew")
+
+
+
+
+    airwaySheetFrame.grid_rowconfigure(2, weight=1)
+    airwaySheetFrame.grid_columnconfigure(0, weight=1)
+    airwayButtonFrame = ttk.Frame(canHostAircraftsFrame)
+    airwayButtonFrame.grid(row=3, column=0, sticky="ws", padx=5, pady=5)  
+
+    ttk.Label(airwaySheetFrame, text="单次发射:").grid(row=0, column=0, padx=5, pady=1, sticky="w")
+    ttk.Label(airwaySheetFrame, text="发射间隔:").grid(row=1, column=0, padx=5, pady=1, sticky="w")
+    airwayEntry1 = ttk.Entry(airwaySheetFrame, width=16)
+    airwayEntry1.grid(row=0, column=1, padx=5, pady=1)
+    airwayEntry1 = ttk.Entry(airwaySheetFrame, width=16)
+    airwayEntry1.grid(row=1, column=1, padx=5, pady=1)
+    ttk.Button(airwaySheetFrame, text="+", command=debug2, width=3).grid(row=0, column=2, padx=5, pady=5)
+    ttk.Button(airwaySheetFrame, text="-", command=debug2, width=3).grid(row=1, column=2, padx=5, pady=5)
+    ttk.Button(airwayButtonFrame, text="读取选中项", command=debug2, width=10).grid(row=0, column=0, padx=5, pady=5)
+    ttk.Button(airwayButtonFrame, text="保存至选中项", command=debug2, width=12).grid(row=0, column=1, padx=5, pady=5)    
+    
+    airwayScrollbar = ttk.Scrollbar(airwaySheetFrame, orient="vertical", command=airwayTable.yview)
+    airwayTable.configure(yscrollcommand=airwayScrollbar.set)
+
+    airwayTable.grid(row=2, column=0, padx=5, pady=5, sticky="nsew")
+    airwayScrollbar.grid(row=2, column=2, padx=(0, 5), pady=5, sticky="ns")
+    
+    airwaySheetFrame.grid_rowconfigure(2, weight=1)
+    airwaySheetFrame.grid_columnconfigure(0, weight=1)
+    
 
 
 
@@ -656,6 +785,8 @@ def main():
 
             for item in producesTable.get_children():
                 producesTable.delete(item)
+            for item in producesTable.get_children():
+                producesTable.delete(item)
     
 
 
@@ -672,8 +803,8 @@ def main():
         askFillDefault = messagebox.askokcancel("填充默认值", "是否确认填充默认值？这将覆盖当前所有输入内容，此操作不可撤销。")
         booleanCheckBoxCommand()
         if askFillDefault:
-            globalNameEntry.set("U_NameExample")
-            techEntry.set("T_TechExample")
+            globalNameEntry.set("NameExample")
+            techEntry.set("U_TechExample")
             movieEntry.set("Units/Images/[Type]/Mid-Level or Topdown/Example.midx")
             abstractMovieEntry.set("Units/Images/[Type]/Abstract/Example.midx")
             modelEntry.set("Units/Images/[Type]/Example.midx")
@@ -737,13 +868,19 @@ def main():
             # 清空表格并添加示例文本
             for item in customTable.get_children():
                 customTable.delete(item)
-            customTable.insert("", tk.END, values=("/TestOption1", "Value1"))
-            customTable.insert("", tk.END, values=("/TestOption2", "Value2"))
+            customTable.insert("", tk.END, values=("TestOption1", "Value1"))
+            customTable.insert("", tk.END, values=("TestOption2", "Value2"))
 
             for item in producesTable.get_children():
                 producesTable.delete(item)
-            producesTable.insert("", tk.END, values=("SubUnit"))
-            
+            producesTable.insert("", tk.END, values=("SubUnit1"))
+            producesTable.insert("", tk.END, values=("SubUnit2"))
+
+            for item in canCarryUnitTable.get_children():
+                canCarryUnitTable.delete(item)
+            canCarryUnitTable.insert("", tk.END, values=("SubUnit3"))
+            canCarryUnitTable.insert("", tk.END, values=("SubUnit4"))
+
 
     #生成代码按钮
 
@@ -819,6 +956,7 @@ def main():
             f"{hangarSpaceRequiredString.get()}"
             f"{customTableData.get()}"
             f"{producesTableData.get()}"
+            f"{canCarryUnitTableData.get()}"
             f"\n"
             f"{behaviorString.get()}"
             
@@ -921,6 +1059,7 @@ def main():
 
     def checkBasicData():
         customOutputTable()
+        canCarryUnitOutputTable()
         for i, (text, entryVar, stringVar, checkType) in enumerate(checkMap):
             if checkType == "Name":
                 if globalNameEntry.get() ==  "":
