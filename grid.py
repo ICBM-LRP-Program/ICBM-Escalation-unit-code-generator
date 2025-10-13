@@ -640,10 +640,7 @@ def main():
             airwayTable.delete(selected[0])
 
 
-    def debug2():
-        print("debug2")
-
-    def debug3():
+    def airwayOutputTable():
         items = airwayTable.get_children()
         if len(items) < 1:
             print("airwayTable内的行数小于1")
@@ -656,8 +653,9 @@ def main():
             values = airwayTable.item(item, 'values')
             if values:
                 table_data += f"    Airway Launch {values[0]} Time {values[1]}\n"
-        airwayTableData.set(table_data)
+        airwayTableData.set(f"\n{table_data}")
         print(airwayTableData.get())
+
     def airwayConfig():
         print("airwayIsConfigNow")
 
@@ -726,6 +724,110 @@ def main():
     canHostAircraftsSheetFrame.grid(row=1, column=0, sticky="w", padx=5, pady=5) 
 
     canHostAircraftsTableData = tk.StringVar()  
+    canHostAircraftsCheckboxVar = tk.BooleanVar()
+
+    def canHostAircraftsAddToTable():
+        if canHostAircraftsEntry1.get().strip():
+            canHostAircraftsTable.insert("", tk.END, values=(
+                canHostAircraftsEntry1.get(),
+                canHostAircraftsEntry2.get(),
+                canHostAircraftsEntry3.get(),
+                canHostAircraftsEntry4.get(),
+                "√" if canHostAircraftsCheckboxVar.get() else ""
+            ))
+            canHostAircraftsEntry1.delete(0, tk.END)
+            canHostAircraftsEntry2.delete(0, tk.END)
+            canHostAircraftsEntry3.delete(0, tk.END)
+            canHostAircraftsEntry4.delete(0, tk.END)
+            canHostAircraftsCheckboxVar.set(False)
+
+    def canHostAircraftsDeleteSelected():
+        selected = canHostAircraftsTable.selection()
+        if selected:
+            canHostAircraftsTable.delete(selected[0])
+
+    def canHostAircraftsMapToEntries():
+        selected = canHostAircraftsTable.selection()
+        if selected:
+            values = canHostAircraftsTable.item(selected[0], 'values')
+            canHostAircraftsEntry1.delete(0, tk.END)
+            canHostAircraftsEntry2.delete(0, tk.END)
+            canHostAircraftsEntry3.delete(0, tk.END)
+            canHostAircraftsEntry4.delete(0, tk.END)
+            if values:
+                canHostAircraftsEntry1.insert(0, values[0])
+                if len(values) > 1:
+                    canHostAircraftsEntry2.insert(0, values[1])
+                if len(values) > 2:
+                    canHostAircraftsEntry3.insert(0, values[2])
+                if len(values) > 3:
+                    canHostAircraftsEntry4.insert(0, values[3])
+                if len(values) > 4:
+                    canHostAircraftsCheckboxVar.set(values[4] == "√")
+                else:
+                    canHostAircraftsCheckboxVar.set(False)
+
+    def canHostAircraftsSaveToCurrentRow():
+        selected = canHostAircraftsTable.selection()
+        if not selected:
+            canHostAircraftsAddToTable()  # 无选中行则添加新行
+        else:
+            canHostAircraftsTable.item(selected[0], values=(
+                canHostAircraftsEntry1.get(),
+                canHostAircraftsEntry2.get(),
+                canHostAircraftsEntry3.get(),
+                canHostAircraftsEntry4.get(),
+                "√" if canHostAircraftsCheckboxVar.get() else ""
+            ))
+            canHostAircraftsEntry1.delete(0, tk.END)
+            canHostAircraftsEntry2.delete(0, tk.END)
+            canHostAircraftsEntry3.delete(0, tk.END)
+            canHostAircraftsEntry4.delete(0, tk.END)
+            canHostAircraftsCheckboxVar.set(False)
+
+    def canHostAircraftsOutputTable():
+        items = canHostAircraftsTable.get_children()
+        if not items:
+            print("表格为空")
+            canHostAircraftsTableData.set("")
+            return ""
+        table_data = ""
+        for item in items:
+            values = canHostAircraftsTable.item(item, 'values')
+            if values:
+                # 安全地获取各个字段的值，避免索引越界
+                unit_name = values[0] if len(values) > 0 else ""
+                unit_count = values[1] if len(values) > 1 else ""
+                airway = values[2] if len(values) > 2 else ""
+                patrol_count = values[3] if len(values) > 3 else ""
+                auto_patrol = values[4] if len(values) > 4 else ""
+                
+                # 检查航线（airway）和巡逻数（patrol_count）是否为空
+                has_airway = airway and airway.strip()
+                has_patrol = patrol_count and patrol_count.strip()
+                has_auto_patrol = auto_patrol == "√"
+                
+                if has_airway and has_patrol:
+                    # 既有航线又有巡逻数
+                    if has_auto_patrol:
+                        table_data += f"    CanHostAircrafts airway {airway} \"{unit_name}\" {unit_count} Patrol {patrol_count} AIAutoPatrol\n"
+                    else:
+                        table_data += f"    CanHostAircrafts airway {airway} \"{unit_name}\" {unit_count} Patrol {patrol_count}\n"
+                elif has_airway and not has_patrol:
+                    # 只有航线，没有巡逻数
+                    table_data += f"    CanHostAircrafts airway {airway} \"{unit_name}\" {unit_count}\n"
+                elif not has_airway and has_patrol:
+                    # 只有巡逻数，没有航线
+                    if has_auto_patrol:
+                        table_data += f"    CanHostAircrafts \"{unit_name}\" {unit_count} Patrol {patrol_count} AIAutoPatrol\n"
+                    else:
+                        table_data += f"    CanHostAircrafts \"{unit_name}\" {unit_count} Patrol {patrol_count}\n"
+                else:
+                    # 既没有航线也没有巡逻数
+                    table_data += f"    CanHostAircrafts \"{unit_name}\" {unit_count}\n"
+        canHostAircraftsTableData.set(table_data)
+        print(canHostAircraftsTableData.get())
+        return table_data        
 
     canHostAircraftsButtonFrame = ttk.Frame(canHostAircraftsFrame)
     canHostAircraftsButtonFrame.grid(row=2, column=0, sticky="w", padx=5, pady=5)  
@@ -758,12 +860,12 @@ def main():
     canHostAircraftsEntry4 = ttk.Entry(canHostAircraftsEntryFrame, width=6)
     canHostAircraftsEntry4.grid(row=1, column=1, padx=5, pady=5)
 
-    ttk.Checkbutton(canHostAircraftsEntryFrame).grid(row=1, column=5, padx=5, pady=5)
+    ttk.Checkbutton(canHostAircraftsEntryFrame, variable=canHostAircraftsCheckboxVar).grid(row=1, column=5, padx=5, pady=5)
 
-    ttk.Button(canHostAircraftsButtonFrame, text="+", command=debug3, width=3).grid(row=0, column=0, padx=5, pady=5)
-    ttk.Button(canHostAircraftsButtonFrame, text="-", command=debug3, width=3).grid(row=0, column=1, padx=5, pady=5)
-    ttk.Button(canHostAircraftsButtonFrame, text="读取选中项", command=debug3, width=12).grid(row=0, column=2, padx=5, pady=5)
-    ttk.Button(canHostAircraftsButtonFrame, text="保存至选中项", command=debug3, width=12).grid(row=0, column=3, padx=5, pady=5)    
+    ttk.Button(canHostAircraftsButtonFrame, text="+", command=canHostAircraftsAddToTable, width=3).grid(row=0, column=0, padx=5, pady=5)
+    ttk.Button(canHostAircraftsButtonFrame, text="-", command=canHostAircraftsDeleteSelected, width=3).grid(row=0, column=1, padx=5, pady=5)
+    ttk.Button(canHostAircraftsButtonFrame, text="读取选中项", command=canHostAircraftsMapToEntries, width=12).grid(row=0, column=2, padx=5, pady=5)
+    ttk.Button(canHostAircraftsButtonFrame, text="保存至选中项", command=canHostAircraftsSaveToCurrentRow, width=12).grid(row=0, column=3, padx=5, pady=5)    
 
     canHostAircraftsScrollbar = ttk.Scrollbar(canHostAircraftsSheetFrame, orient="vertical", command=canHostAircraftsTable.yview)
     canHostAircraftsTable.configure(yscrollcommand=canHostAircraftsScrollbar.set)
@@ -894,6 +996,10 @@ def main():
                 producesTable.delete(item)
             for item in producesTable.get_children():
                 producesTable.delete(item)
+            for item in airwayTable.get_children():
+                airwayTable.delete(item)   
+            for item in canHostAircraftsTable.get_children():
+                canHostAircraftsTable.delete(item) 
     
 
 
@@ -988,6 +1094,16 @@ def main():
             canCarryUnitTable.insert("", tk.END, values=("SubUnit3"))
             canCarryUnitTable.insert("", tk.END, values=("SubUnit4"))
 
+            for item in airwayTable.get_children():
+                airwayTable.delete(item)
+            airwayTable.insert("", tk.END, values=("2", "60"))
+            airwayTable.insert("", tk.END, values=("1", "180"))
+
+            for item in canHostAircraftsTable.get_children():
+                canHostAircraftsTable.delete(item)
+            canHostAircraftsTable.insert("", tk.END, values=("SubUnit5", "15", "", "2"))
+            canHostAircraftsTable.insert("", tk.END, values=("SubUnit6", "10", "1", "5", "√"))
+
 
     #生成代码按钮
 
@@ -997,6 +1113,11 @@ def main():
         # 先把各项检查并生成对应的 StringVar 内容
         checkBasicData()
         producesOutputTable()  # 确保生产单位表格数据已更新
+        airwayOutputTable()
+        canHostAircraftsOutputTable()
+        canCarryUnitOutputTable()
+
+        # 检查必填字段是否已填写
 
         if (globalNameEntry.get() == "" or
             techEntry.get() == "" or
@@ -1066,6 +1187,9 @@ def main():
             f"{canCarryUnitTableData.get()}"
             f"\n"
             f"{behaviorString.get()}"
+            f"{airwayTableData.get()}"
+            f"{canHostAircraftsTableData.get()}"
+            f"\n"
             
         )
 
@@ -1241,7 +1365,7 @@ def main():
     ttk.Button(globalButtonFrame, command=cancelNameString, text="清除").pack(side="left", padx=5)
     ttk.Button(globalButtonFrame, command=fillDefault, text="默认").pack(side="left", padx=5)
     ttk.Button(globalButtonFrame, command=generateCode, text="生成").pack(side="left", padx=5)
-    ttk.Button(globalButtonFrame, command=debug3, text="debug").pack(side="left", padx=5)
+    ttk.Button(globalButtonFrame, command=canHostAircraftsOutputTable, text="debug").pack(side="left", padx=5)
 
     screenSize = root.maxsize()
     print(screenSize)
