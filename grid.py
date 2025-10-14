@@ -18,45 +18,8 @@ def main():
     notebook = ttk.Notebook(mainFrame)
     notebook.pack(fill='both', expand=True)
 
-###test
-### 2025/10/10-15:43
-
-
-
-#    # 更清晰的balloon函数版本
-#    def addBalloon(widget, text):
-#        balloon_ref = [None]  # 使用列表引用保持状态
-#
-#        def showBalloon(event):
-#            if balloon_ref[0]:
-#                balloon_ref[0].destroy()
-#            balloon_ref[0] = tk.Toplevel(widget, bg='lightyellow', relief='solid', borderwidth=1)
-#            balloon_ref[0].wm_overrideredirect(1)
-#            x = widget.winfo_rootx() + widget.winfo_width() // 2 - 100
-#            y = widget.winfo_rooty() + widget.winfo_height() + 5
-#            balloon_ref[0].wm_geometry(f"+{x}+{y}")
-#            label = tk.Label(
-#            balloon_ref[0], 
-#            text=text, 
-#            bg='lightyellow', 
-#            padx=8, 
-#            pady=4, 
-#            justify='left', 
-#            anchor='w',
-#            wraplength=350  # 设置自动换行宽度
-#            )
-#            label.pack(fill='x')
-#
-#        def hideBalloon(event):
-#            if balloon_ref[0]:
-#                balloon_ref[0].destroy()
-#                balloon_ref[0] = None
-#
-#        widget.bind("<Enter>", showBalloon)
-#        widget.bind("<Leave>", hideBalloon)
-
-
-
+###
+### 2025/10/14
 
 
 
@@ -339,9 +302,13 @@ def main():
 
     Frame2 = ttk.Frame(notebook)
     notebook.add(Frame2, text="行为控制")
+    
+    # 配置Frame2的网格权重，使其能够扩展
+    Frame2.columnconfigure(0, weight=1)
+    Frame2.rowconfigure(0, weight=1)
 
     behaviorCtrl = ttk.Labelframe(Frame2, text="行为控制")
-    behaviorCtrl.place(x=10, y=10, width=325, height=670)
+    behaviorCtrl.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
 
 
     
@@ -448,6 +415,13 @@ def main():
 
     Frame3 = ttk.Frame(notebook)
     notebook.add(Frame3, text="子单位")
+    
+    # 配置Frame3的网格权重，使其能够扩展
+    Frame3.columnconfigure(0, weight=1)
+    Frame3.columnconfigure(1, weight=1)
+    Frame3.columnconfigure(3, weight=1)
+    Frame3.rowconfigure(0, weight=1)
+    Frame3.rowconfigure(1, weight=1)
 
 
     producesFrame = ttk.Labelframe(Frame3, text="允许生产的单位")
