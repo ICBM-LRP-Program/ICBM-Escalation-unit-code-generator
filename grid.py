@@ -24,12 +24,30 @@ def main():
 
 
 
+
+
+
+
+
+
+
+
+
+
+
     #基本信息标签页
     Frame1 = ttk.Frame(notebook)
     notebook.add(Frame1, text="基本信息和数据")
+    
+    # 配置Frame1的网格权重，使其能够扩展
+    Frame1.columnconfigure(0, weight=1)
+    Frame1.columnconfigure(1, weight=1)
+    Frame1.rowconfigure(0, weight=1)
+    Frame1.rowconfigure(1, weight=1)
 
     basicInfo = ttk.Labelframe(Frame1, text="基础数据")
     basicInfo.grid(row=0, column=0, columnspan=2, padx=10, pady=5, sticky="nsew")
+
 
     basicInfoFrame = ttk.Frame(basicInfo)
     basicInfoFrame.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
@@ -300,6 +318,16 @@ def main():
 
 
 
+
+
+
+
+
+
+
+
+
+
     Frame2 = ttk.Frame(notebook)
     notebook.add(Frame2, text="行为控制")
     
@@ -405,6 +433,29 @@ def main():
             ttk.Checkbutton(behaviorCtrl, text=text, variable=Var, command=booleanCheckBoxCommand).grid(row=row, column=col, padx=15, pady=5, sticky="w")
         else:
             print("DEBUG_TPYE")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -588,19 +639,13 @@ def main():
 
 
 
-
-
-
     airwayFrame = ttk.Labelframe(Frame3, text="航线")
     airwayFrame.grid(row=0, column=1, rowspan=2, sticky="nsew", padx=5, pady=5)
-
-
 
     airwayTableData = tk.StringVar()  
 
     airwaySheetFrame = ttk.Frame(airwayFrame)
     airwaySheetFrame.grid(row=0, column=0, sticky="nw", padx=5, pady=5) 
-
 
     def airwayAddToTable():
         if airwayEntry1.get().strip() and airwayEntry2.get().strip():
@@ -653,15 +698,12 @@ def main():
             airwayEntry1.delete(0, tk.END)
             airwayEntry2.delete(0, tk.END)
 
-
     airwayTable = ttk.Treeview(airwaySheetFrame, columns=("col1", "col2"), show="headings", height=24)
     airwayTable.heading("col1", text="单次发射数")
     airwayTable.heading("col2", text="时间间隔")
     airwayTable.column("col1", width=90)
     airwayTable.column("col2", width=90)
     airwayTable.grid(row=2, column=0, columnspan=2, padx=5, pady=5, sticky="nsew")
-
-
 
     airwaySheetFrame.grid_rowconfigure(2, weight=1)
     airwaySheetFrame.grid_columnconfigure(0, weight=1)
@@ -683,9 +725,6 @@ def main():
     airwayTable.configure(yscrollcommand=airwayScrollbar.set)
     airwayScrollbar.grid(row=2, column=2, padx=(0, 5), pady=5, sticky="ns")
     
-
-
-  
 
 
     canHostAircraftsFrame = ttk.Labelframe(Frame3, text="子单位")
@@ -862,6 +901,23 @@ def main():
 
 
 
+    Frame4 = ttk.Frame(notebook)
+    notebook.add(Frame4, text="武器和雷达")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -875,6 +931,15 @@ def main():
 
     #ass = tk.Label(tabUnitData, text="饿饿饿\n啊啊啊")
     #ass.pack()
+
+
+
+
+
+
+
+
+
 
 
 
@@ -1247,8 +1312,7 @@ def main():
         ("MaxNumberOnMap", maxNumberOnMapEntry, maxNumberOnMapString, "Normal"),
         ("MaxNumberOfToOrder", maxNumberToOrderEntry, maxNumberToOrderString, "Normal"),
         ("HangarSpaceRequired", hangarSpaceRequiredEntry, hangarSpaceRequiredString, "Normal"),
-        ("HangarMaxLoad", hangarMaxLoadEntry, hangarMaxLoadString, "Normal")
-        
+        ("HangarMaxLoad", hangarMaxLoadEntry, hangarMaxLoadString, "Normal")     
     ]
 
 
@@ -1316,12 +1380,10 @@ def main():
 
 
 
-    #def debug():
-    #    checkBasicData()
+    
+    
 
-    #调试用
-    
-    
+
 
 
 
@@ -1346,7 +1408,7 @@ def main():
     Width, High = screenSize
 
 
-    root.geometry(f"1024x768+{int(Width*.5-600)}+{int(High*.5-600)}")
+    root.geometry(f"1024x768+{int(Width*.5-512)}+{int(High*.5-384)}")
     root.resizable(False, False)
 
     root.mainloop()
