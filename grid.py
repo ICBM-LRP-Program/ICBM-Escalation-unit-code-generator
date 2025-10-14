@@ -904,6 +904,241 @@ def main():
     Frame4 = ttk.Frame(notebook)
     notebook.add(Frame4, text="武器和雷达")
 
+    # 配置Frame4的网格权重，使其能够扩展
+    Frame4.columnconfigure(0, weight=1)
+    Frame4.rowconfigure(0, weight=1)
+
+    missileFrame = ttk.Labelframe(Frame4, text="导弹配置")
+    missileFrame.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
+
+    missileTableData = tk.StringVar()
+
+    def missileAddToTable():
+        if missileEntry1.get().strip():
+            missileTable.insert("", tk.END, values=(
+                missileEntry1.get(),
+                missileEntry2.get(),
+                missileEntry3.get(),
+                missileEntry4.get(),
+                missileEntry5.get(),
+                missileEntry6.get(),
+                missileEntry7.get(),
+                "√" if missileCheckbox1.get() else "",
+                "√" if missileCheckbox2.get() else "",
+                missileEntry8.get()
+            ))
+            missileEntry1.delete(0, tk.END)
+            missileEntry2.delete(0, tk.END)
+            missileEntry3.delete(0, tk.END)
+            missileEntry4.delete(0, tk.END)
+            missileEntry5.delete(0, tk.END)
+            missileEntry6.delete(0, tk.END)
+            missileEntry7.delete(0, tk.END)
+            missileEntry8.delete(0, tk.END)
+            missileCheckbox1.set(False)
+            missileCheckbox2.set(False)
+
+    def missileDeleteSelected():
+        selected = missileTable.selection()
+        if selected:
+            missileTable.delete(selected[0])
+
+    def missileOutputTable():
+        items = missileTable.get_children()
+        if not items:
+            print("导弹配置表格为空")
+            missileTableData.set("")
+            return ""
+        table_data = ""
+        for item in items:
+            values = missileTable.item(item, 'values')
+            if values:
+                config_name = values[0] if len(values) > 0 else ""
+                default_config = values[1] if len(values) > 1 else ""
+                upgrade_from = values[2] if len(values) > 2 else ""
+                weapon_name = values[3] if len(values) > 3 else ""
+                ammo_count = values[4] if len(values) > 4 else ""
+                launch_count = values[5] if len(values) > 5 else ""
+                launch_interval = values[6] if len(values) > 6 else ""
+                auto_engage = values[7] if len(values) > 7 else ""
+                show_ammo = values[8] if len(values) > 8 else ""
+                modifier = values[9] if len(values) > 9 else ""
+                
+                # 构建导弹配置字符串
+                missile_config = f"    Config \"{config_name}\""
+                if default_config:
+                    missile_config += f" DefaultConfig \"{default_config}\""
+                if upgrade_from:
+                    missile_config += f" UpgradeFrom \"{upgrade_from}\""
+                if weapon_name:
+                    missile_config += f" Weapon \"{weapon_name}\""
+                if ammo_count:
+                    missile_config += f" AmmoCount {ammo_count}"
+                if launch_count:
+                    missile_config += f" LaunchCount {launch_count}"
+                if launch_interval:
+                    missile_config += f" LaunchInterval {launch_interval}"
+                if auto_engage == "√":
+                    missile_config += " AutoEngage"
+                if show_ammo == "√":
+                    missile_config += " ShowAmmo"
+                if modifier:
+                    missile_config += f" Modifier {modifier}"
+                
+                table_data += missile_config + "\n"
+        missileTableData.set(table_data)
+        print(missileTableData.get())
+        return table_data
+
+    def missileMapToEntries():
+        selected = missileTable.selection()
+        if selected:
+            values = missileTable.item(selected[0], 'values')
+            missileEntry1.delete(0, tk.END)
+            missileEntry2.delete(0, tk.END)
+            missileEntry3.delete(0, tk.END)
+            missileEntry4.delete(0, tk.END)
+            missileEntry5.delete(0, tk.END)
+            missileEntry6.delete(0, tk.END)
+            missileEntry7.delete(0, tk.END)
+            missileEntry8.delete(0, tk.END)
+            if values:
+                missileEntry1.insert(0, values[0] if len(values) > 0 else "")
+                missileEntry2.insert(0, values[1] if len(values) > 1 else "")
+                missileEntry3.insert(0, values[2] if len(values) > 2 else "")
+                missileEntry4.insert(0, values[3] if len(values) > 3 else "")
+                missileEntry5.insert(0, values[4] if len(values) > 4 else "")
+                missileEntry6.insert(0, values[5] if len(values) > 5 else "")
+                missileEntry7.insert(0, values[6] if len(values) > 6 else "")
+                missileEntry8.insert(0, values[9] if len(values) > 9 else "")
+                missileCheckbox1.set(values[7] == "√" if len(values) > 7 else False)
+                missileCheckbox2.set(values[8] == "√" if len(values) > 8 else False)
+
+    def missileSaveToCurrentRow():
+        selected = missileTable.selection()
+        if not selected:
+            missileAddToTable()  # 无选中行则添加新行
+        else:
+            missileTable.item(selected[0], values=(
+                missileEntry1.get(),
+                missileEntry2.get(),
+                missileEntry3.get(),
+                missileEntry4.get(),
+                missileEntry5.get(),
+                missileEntry6.get(),
+                missileEntry7.get(),
+                "√" if missileCheckbox1.get() else "",
+                "√" if missileCheckbox2.get() else "",
+                missileEntry8.get()
+            ))
+            missileEntry1.delete(0, tk.END)
+            missileEntry2.delete(0, tk.END)
+            missileEntry3.delete(0, tk.END)
+            missileEntry4.delete(0, tk.END)
+            missileEntry5.delete(0, tk.END)
+            missileEntry6.delete(0, tk.END)
+            missileEntry7.delete(0, tk.END)
+            missileEntry8.delete(0, tk.END)
+            missileCheckbox1.set(False)
+            missileCheckbox2.set(False)
+
+    # 创建导弹配置表格的框架
+    missileSheetFrame = ttk.Frame(missileFrame)
+    missileSheetFrame.grid(row=0, column=0, sticky="nsew", padx=5, pady=5)
+
+    # 输入控件区域
+    missileEntryFrame = ttk.Frame(missileSheetFrame)
+    missileEntryFrame.grid(row=0, column=0, columnspan=2, sticky="w", padx=5, pady=5)
+
+    # 第一行输入控件
+    ttk.Label(missileEntryFrame, text="配置名称:").grid(row=0, column=0, padx=5, pady=2, sticky="w")
+    missileEntry1 = ttk.Entry(missileEntryFrame, width=15)
+    missileEntry1.grid(row=0, column=1, padx=5, pady=2)
+
+    ttk.Label(missileEntryFrame, text="默认配置:").grid(row=0, column=2, padx=5, pady=2, sticky="w")
+    missileEntry2 = ttk.Entry(missileEntryFrame, width=15)
+    missileEntry2.grid(row=0, column=3, padx=5, pady=2)
+
+    ttk.Label(missileEntryFrame, text="升级自:").grid(row=0, column=4, padx=5, pady=2, sticky="w")
+    missileEntry3 = ttk.Entry(missileEntryFrame, width=15)
+    missileEntry3.grid(row=0, column=5, padx=5, pady=2)
+
+    ttk.Label(missileEntryFrame, text="武器名称:").grid(row=0, column=6, padx=5, pady=2, sticky="w")
+    missileEntry4 = ttk.Entry(missileEntryFrame, width=15)
+    missileEntry4.grid(row=0, column=7, padx=5, pady=2)
+
+    # 第二行输入控件
+    ttk.Label(missileEntryFrame, text="备弹数量:").grid(row=1, column=0, padx=5, pady=2, sticky="w")
+    missileEntry5 = ttk.Entry(missileEntryFrame, width=15)
+    missileEntry5.grid(row=1, column=1, padx=5, pady=2)
+
+    ttk.Label(missileEntryFrame, text="发射数量:").grid(row=1, column=2, padx=5, pady=2, sticky="w")
+    missileEntry6 = ttk.Entry(missileEntryFrame, width=15)
+    missileEntry6.grid(row=1, column=3, padx=5, pady=2)
+
+    ttk.Label(missileEntryFrame, text="发射间隔:").grid(row=1, column=4, padx=5, pady=2, sticky="w")
+    missileEntry7 = ttk.Entry(missileEntryFrame, width=15)
+    missileEntry7.grid(row=1, column=5, padx=5, pady=2)
+
+    ttk.Label(missileEntryFrame, text="修改器:").grid(row=1, column=6, padx=5, pady=2, sticky="w")
+    missileEntry8 = ttk.Entry(missileEntryFrame, width=15)
+    missileEntry8.grid(row=1, column=7, padx=5, pady=2)
+
+    # 第三行复选框
+    missileCheckbox1 = tk.BooleanVar()
+    missileCheckbox2 = tk.BooleanVar()
+    ttk.Checkbutton(missileEntryFrame, text="自动交战", variable=missileCheckbox1).grid(row=2, column=0, padx=5, pady=2, sticky="w")
+    ttk.Checkbutton(missileEntryFrame, text="显示备弹", variable=missileCheckbox2).grid(row=2, column=1, padx=5, pady=2, sticky="w")
+
+    # 创建导弹配置表格
+    missileTable = ttk.Treeview(missileSheetFrame, columns=("col1", "col2", "col3", "col4", "col5", "col6", "col7", "col8", "col9", "col10"), show="headings", height=12)
+    missileTable.heading("col1", text="配置名称")
+    missileTable.heading("col2", text="默认配置")
+    missileTable.heading("col3", text="升级自")
+    missileTable.heading("col4", text="武器名称")
+    missileTable.heading("col5", text="备弹数量")
+    missileTable.heading("col6", text="发射数量")
+    missileTable.heading("col7", text="发射间隔")
+    missileTable.heading("col8", text="自动交战")
+    missileTable.heading("col9", text="显示备弹")
+    missileTable.heading("col10", text="修改器")
+    
+    missileTable.column("col1", width=100)
+    missileTable.column("col2", width=80)
+    missileTable.column("col3", width=80)
+    missileTable.column("col4", width=100)
+    missileTable.column("col5", width=70)
+    missileTable.column("col6", width=70)
+    missileTable.column("col7", width=70)
+    missileTable.column("col8", width=70)
+    missileTable.column("col9", width=70)
+    missileTable.column("col10", width=80)
+
+    missileTable.grid(row=1, column=0, padx=5, pady=5, sticky="nsew")
+
+    # 创建滚动条
+    missileScrollbar = ttk.Scrollbar(missileSheetFrame, orient="vertical", command=missileTable.yview)
+    missileTable.configure(yscrollcommand=missileScrollbar.set)
+    missileScrollbar.grid(row=1, column=1, padx=(0, 5), pady=5, sticky="ns")
+
+    # 按钮区域
+    missileButtonFrame = ttk.Frame(missileSheetFrame)
+    missileButtonFrame.grid(row=2, column=0, columnspan=2, sticky="w", padx=5, pady=5)
+
+    ttk.Button(missileButtonFrame, text="添加", command=missileAddToTable, width=8).grid(row=0, column=0, padx=5, pady=5)
+    ttk.Button(missileButtonFrame, text="删除", command=missileDeleteSelected, width=8).grid(row=0, column=1, padx=5, pady=5)
+    ttk.Button(missileButtonFrame, text="读取", command=missileMapToEntries, width=8).grid(row=0, column=2, padx=5, pady=5)
+    ttk.Button(missileButtonFrame, text="保存", command=missileSaveToCurrentRow, width=8).grid(row=0, column=3, padx=5, pady=5)
+    ttk.Button(missileButtonFrame, text="输出", command=missileOutputTable, width=8).grid(row=0, column=4, padx=5, pady=5)
+
+    # 配置网格权重
+    missileSheetFrame.grid_rowconfigure(1, weight=1)
+    missileSheetFrame.grid_columnconfigure(0, weight=1)
+    missileFrame.grid_rowconfigure(0, weight=1)
+    missileFrame.grid_columnconfigure(0, weight=1)
+
+    
+
 
 
 
@@ -1038,7 +1273,9 @@ def main():
             for item in airwayTable.get_children():
                 airwayTable.delete(item)   
             for item in canHostAircraftsTable.get_children():
-                canHostAircraftsTable.delete(item) 
+                canHostAircraftsTable.delete(item)
+            for item in missileTable.get_children():
+                missileTable.delete(item)
     
 
 
@@ -1155,6 +1392,7 @@ def main():
         airwayOutputTable()
         canHostAircraftsOutputTable()
         canCarryUnitOutputTable()
+        missileOutputTable()  # 确保导弹配置表格数据已更新
 
         # 检查必填字段是否已填写
 
@@ -1228,6 +1466,7 @@ def main():
             f"{behaviorString.get()}"
             f"{airwayTableData.get()}"
             f"{canHostAircraftsTableData.get()}"
+            f"{missileTableData.get()}"
             f"\n"
             
         )
