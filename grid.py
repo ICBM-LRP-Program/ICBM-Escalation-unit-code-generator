@@ -37,7 +37,7 @@ def main():
 
     #基本信息标签页
     Frame1 = ttk.Frame(notebook)
-    notebook.add(Frame1, text="基本信息和数据")
+    notebook.add(Frame1, text="基本信息")
     
     # 配置Frame1的网格权重，使其能够扩展
     Frame1.columnconfigure(0, weight=1)
@@ -329,7 +329,7 @@ def main():
 
 
     Frame2 = ttk.Frame(notebook)
-    notebook.add(Frame2, text="行为控制")
+    notebook.add(Frame2, text="行为")
     
     # 配置Frame2的网格权重，使其能够扩展
     Frame2.columnconfigure(0, weight=1)
@@ -901,8 +901,16 @@ def main():
 
 
 
+
+
+
+
+
+
+
+
     Frame4 = ttk.Frame(notebook)
-    notebook.add(Frame4, text="武器和雷达")
+    notebook.add(Frame4, text="武器")
 
     # 配置Frame4的网格权重，使其能够扩展
     Frame4.columnconfigure(0, weight=1)
@@ -1784,6 +1792,57 @@ def main():
 
 
     
+
+
+
+
+
+
+
+
+
+
+    Frame5 = ttk.Frame(notebook)
+    notebook.add(Frame5, text="雷达和修改器")
+
+
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
