@@ -1093,9 +1093,9 @@ def main():
             configButtonFrame.pack(fill='x', padx=5, pady=5)
             ttk.Button(configButtonFrame, text="添加配置", command=self.addConfig, width=8).pack(side='left', padx=(0, 5))
             ttk.Button(configButtonFrame, text="添加升级项", command=self.addImprovedBy, width=10).pack(side='left', padx=(0, 5))
-            ttk.Button(configButtonFrame, text="-", command=self.deleteSelected, width=3).pack(side='left', padx=(0, 5))
             ttk.Button(configButtonFrame, text="读取选中项", command=self.loadSelectedConfig, width=10).pack(side='left', padx=(0, 5))
             ttk.Button(configButtonFrame, text="保存至选中项", command=self.saveToSelectedConfig, width=12).pack(side='left', padx=(0, 5))
+            ttk.Button(configButtonFrame, text="-", command=self.deleteSelected, width=3).pack(side='left', padx=(0, 5))
         
         def refreshConfigList(self):
             """刷新配置列表"""
@@ -1805,9 +1805,195 @@ def main():
     Frame5 = ttk.Frame(notebook)
     notebook.add(Frame5, text="雷达和修改器")
 
+    # 配置Frame5的网格权重，使其能够扩展（2列布局）
+    Frame5.columnconfigure(0, weight=1)
+    Frame5.columnconfigure(1, weight=1)
+    Frame5.rowconfigure(0, weight=1)
+
+    radarFrame = ttk.Labelframe(Frame5, text="雷达配置表")
+    radarFrame.grid(row=0, column=0, sticky="nsew", padx=5, pady=5)
+
+    radarTableData = tk.StringVar()
+
+    def radarAddToTable():
+        if radarEntry1.get().strip():
+            radarTable.insert("", tk.END, values=(radarEntry1.get()))
+            radarEntry1.delete(0, tk.END)
+
+    def radarDeleteSelected():
+        selected = radarTable.selection()
+        if selected:
+            radarTable.delete(selected[0])
+    def radarOutputTable():
+        items = radarTable.get_children()
+        if not items:
+            print("表格为空")
+            radarTableData.set("")
+            return ""
+        table_data = ""
+        for item in items:
+            values = radarTable.item(item, 'values')
+            if values:
+                table_data += f"    Radar \"{values[0]}\"\n"
+        radarTableData.set(f"\n{table_data}")
+        print(radarTableData.get())
+        return table_data
+
+
+    def radarMapToEntries():
+        selected = radarTable.selection()
+        if selected:
+            values = radarTable.item(selected[0], 'values')
+            radarEntry1.delete(0, tk.END)
+            if values:
+                radarEntry1.insert(0, values[0])
+
+    def radarSaveToCurrentRow():
+        selected = radarTable.selection()
+        if not selected:
+            radarAddToTable()  # 无选中行则添加新行
+        else:
+            radarTable.item(selected[0], values=radarEntry1.get())
+            radarEntry1.delete(0, tk.END)
+
+    # 使用grid布局管理器来避免框架互相干扰
+    radarSheetFrame = ttk.Frame(radarFrame)
+    radarSheetFrame.grid(row=0, column=0, sticky="nsew", padx=5, pady=5) 
+
+    ttk.Label(radarSheetFrame, text="雷达名称:").grid(row=0, column=0, padx=5, pady=1, sticky="w")
+    radarEntry1 = ttk.Entry(radarSheetFrame, width=34)
+    radarEntry1.grid(row=1, column=0, padx=5, pady=1, sticky="w")
+
+
+    # 创建表格和滚动条
+    radarTable = ttk.Treeview(radarSheetFrame, columns=("col1"), show="headings", height=24)
+    radarTable.heading("col1", text="雷达名称")
+    radarTable.column("col1", width=420)
+    
+    # 创建垂直滚动条
+    radarScrollbar = ttk.Scrollbar(radarSheetFrame, orient="vertical", command=radarTable.yview)
+    radarTable.configure(yscrollcommand=radarScrollbar.set)
+    
+    # 使用grid布局放置表格和滚动条
+    radarTable.grid(row=2, column=0, padx=5, pady=5, sticky="nsew")
+    radarScrollbar.grid(row=2, column=1, padx=(0, 5), pady=5, sticky="ns")
+    
+    # 配置网格权重使表格可以扩展
+    radarSheetFrame.grid_rowconfigure(2, weight=1)
+    radarSheetFrame.grid_columnconfigure(0, weight=1)
+
+    radarButtonFrame = ttk.Frame(radarFrame)
+    radarButtonFrame.grid(row=3, column=0, sticky="sw", padx=5, pady=5)  
+    ttk.Button(radarSheetFrame, text="+", command=radarAddToTable, width=3).grid(row=0, column=1, padx=5, pady=5)
+    ttk.Button(radarSheetFrame, text="-", command=radarDeleteSelected, width=3).grid(row=1, column=1, padx=5, pady=5)
+    ttk.Button(radarButtonFrame, text="读取选中项", command=radarMapToEntries, width=10).grid(row=0, column=0, padx=5, pady=5)
+    ttk.Button(radarButtonFrame, text="保存至选中项", command=radarSaveToCurrentRow, width=12).grid(row=0, column=1, padx=5, pady=5)
+
+    # 修改器配置表
+    modifierFrame = ttk.Labelframe(Frame5, text="修改器配置表")
+    modifierFrame.grid(row=0, column=1, sticky="nsew", padx=5, pady=5)
+
+    modifierTableData = tk.StringVar()
+
+    def modifierAddToTable():
+        if modifierEntry1.get().strip():
+            modifierTable.insert("", tk.END, values=(modifierEntry1.get()))
+            modifierEntry1.delete(0, tk.END)
+
+    def modifierDeleteSelected():
+        selected = modifierTable.selection()
+        if selected:
+            modifierTable.delete(selected[0])
+    def modifierOutputTable():
+        items = modifierTable.get_children()
+        if not items:
+            print("表格为空")
+            modifierTableData.set("")
+            return ""
+        table_data = ""
+        for item in items:
+            values = modifierTable.item(item, 'values')
+            if values:
+                table_data += f"    Modifier \"{values[0]}\"\n"
+        modifierTableData.set(f"\n{table_data}")
+        print(modifierTableData.get())
+        return table_data
+
+
+    def modifierMapToEntries():
+        selected = modifierTable.selection()
+        if selected:
+            values = modifierTable.item(selected[0], 'values')
+            modifierEntry1.delete(0, tk.END)
+            if values:
+                modifierEntry1.insert(0, values[0])
+
+    def modifierSaveToCurrentRow():
+        selected = modifierTable.selection()
+        if not selected:
+            modifierAddToTable()  # 无选中行则添加新行
+        else:
+            modifierTable.item(selected[0], values=modifierEntry1.get())
+            modifierEntry1.delete(0, tk.END)
+
+    # 使用grid布局管理器来避免框架互相干扰
+    modifierSheetFrame = ttk.Frame(modifierFrame)
+    modifierSheetFrame.grid(row=0, column=0, sticky="nsew", padx=5, pady=5) 
+
+    ttk.Label(modifierSheetFrame, text="修改器名称:").grid(row=0, column=0, padx=5, pady=1, sticky="w")
+    modifierEntry1 = ttk.Entry(modifierSheetFrame, width=34)
+    modifierEntry1.grid(row=1, column=0, padx=5, pady=1, sticky="w")
+
+
+    # 创建表格和滚动条
+    modifierTable = ttk.Treeview(modifierSheetFrame, columns=("col1"), show="headings", height=24)
+    modifierTable.heading("col1", text="修改器名称")
+    modifierTable.column("col1", width=420)
+    
+    # 创建垂直滚动条
+    modifierScrollbar = ttk.Scrollbar(modifierSheetFrame, orient="vertical", command=modifierTable.yview)
+    modifierTable.configure(yscrollcommand=modifierScrollbar.set)
+    
+    # 使用grid布局放置表格和滚动条
+    modifierTable.grid(row=2, column=0, padx=5, pady=5, sticky="nsew")
+    modifierScrollbar.grid(row=2, column=1, padx=(0, 5), pady=5, sticky="ns")
+    
+    # 配置网格权重使表格可以扩展
+    modifierSheetFrame.grid_rowconfigure(2, weight=1)
+    modifierSheetFrame.grid_columnconfigure(0, weight=1)
+
+    modifierButtonFrame = ttk.Frame(modifierFrame)
+    modifierButtonFrame.grid(row=3, column=0, sticky="sw", padx=5, pady=5)  
+    ttk.Button(modifierSheetFrame, text="+", command=modifierAddToTable, width=3).grid(row=0, column=1, padx=5, pady=5)
+    ttk.Button(modifierSheetFrame, text="-", command=modifierDeleteSelected, width=3).grid(row=1, column=1, padx=5, pady=5)
+    ttk.Button(modifierButtonFrame, text="读取选中项", command=modifierMapToEntries, width=10).grid(row=0, column=0, padx=5, pady=5)
+    ttk.Button(modifierButtonFrame, text="保存至选中项", command=modifierSaveToCurrentRow, width=12).grid(row=0, column=1, padx=5, pady=5)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     
-
+    Frame6 = ttk.Frame(notebook)
+    notebook.add(Frame6, text="升级项")
 
 
 
@@ -1967,6 +2153,14 @@ def main():
             airwayTable.delete(item)   
         for item in canHostAircraftsTable.get_children():
             canHostAircraftsTable.delete(item)
+        # 清空雷达配置表格
+        for item in radarTable.get_children():
+            radarTable.delete(item)
+        
+        # 清空修改器配置表格
+        for item in modifierTable.get_children():
+            modifierTable.delete(item)
+        
         # 清空导弹配置数据
         missile_app.configManager.configDataDict.clear()
         missile_app.configManager.weaponDataDict.clear()
@@ -2084,6 +2278,18 @@ def main():
             canHostAircraftsTable.insert("", tk.END, values=("SubUnit5", "15", "", "2"))
             canHostAircraftsTable.insert("", tk.END, values=("SubUnit6", "10", "1", "5", "√"))
 
+            # 添加雷达配置默认数据
+            for item in radarTable.get_children():
+                radarTable.delete(item)
+            radarTable.insert("", tk.END, values=("Radar1"))
+            radarTable.insert("", tk.END, values=("Radar2"))
+
+            # 添加修改器配置默认数据
+            for item in modifierTable.get_children():
+                modifierTable.delete(item)
+            modifierTable.insert("", tk.END, values=("Modifier1"))
+            modifierTable.insert("", tk.END, values=("Modifier2"))
+
             # 添加导弹配置默认数据
             config1Id = missile_app.configManager.addConfig("Config1")
             missile_app.configManager.addWeapon(config1Id, {
@@ -2129,6 +2335,8 @@ def main():
         canHostAircraftsOutputTable()
         canCarryUnitOutputTable()
         missileOutputTable()  # 确保导弹配置表格数据已更新
+        radarOutputTable()  # 确保雷达配置表格数据已更新
+        modifierOutputTable()  # 确保修改器配置表格数据已更新
 
         # 检查必填字段是否已填写
 
@@ -2198,6 +2406,8 @@ def main():
             f"{customTableData.get()}"
             f"{producesTableData.get()}"
             f"{canCarryUnitTableData.get()}"
+            f"{radarTableData.get()}"
+            f"{modifierTableData.get()}"
             f"\n"
             f"{behaviorString.get()}"
             f"{airwayTableData.get()}"
