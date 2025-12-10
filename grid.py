@@ -1995,21 +1995,428 @@ def main():
     Frame6 = ttk.Frame(notebook)
     notebook.add(Frame6, text="升级项")
 
+    # 配置Frame6的网格权重，使其能够扩展（2列布局）
+    Frame6.columnconfigure(0, weight=1)
+    Frame6.columnconfigure(1, weight=1)
+    Frame6.rowconfigure(0, weight=1)
 
+    # 第一表格：属性设置表格
+    improvedByPropertyFrame = ttk.Labelframe(Frame6, text="属性设置表格")
+    improvedByPropertyFrame.grid(row=0, column=0, sticky="nsew", padx=5, pady=5)
 
+    # 配置属性设置表格的网格权重（2列布局）
+    improvedByPropertyFrame.columnconfigure(0, weight=1)
+    improvedByPropertyFrame.columnconfigure(1, weight=1)
+    improvedByPropertyFrame.rowconfigure(0, weight=1)
 
+    improvedByPropertyTableData = tk.StringVar()
 
+    # 定义变量
+    improvedByEntry = tk.StringVar()
+    improvedByMovieEntry = tk.StringVar()
+    improvedByIconEntry = tk.StringVar()
+    improvedByMovieModelEntry = tk.StringVar()
+    improvedBySizeEntry = tk.StringVar()
+    improvedBySpeedEntry = tk.StringVar()
+    improvedByTurnSpeedEntry = tk.StringVar()
+    improvedByRangeEntry = tk.StringVar()
+    improvedByPowerEntry = tk.StringVar()
 
+    # 倍数复选框变量
+    improvedBySizeMultiplierVar = tk.BooleanVar()
+    improvedBySpeedMultiplierVar = tk.BooleanVar()
+    improvedByTurnSpeedMultiplierVar = tk.BooleanVar()
+    improvedByRangeMultiplierVar = tk.BooleanVar()
+    improvedByPowerMultiplierVar = tk.BooleanVar()
 
+    # 左侧：升级项名称表格
+    improvedByPropertyTable = ttk.Treeview(improvedByPropertyFrame, columns=("col1"), show="headings", height=12)
+    improvedByPropertyTable.heading("col1", text="升级项")
+    improvedByPropertyTable.column("col1", width=150)
+    improvedByPropertyTable.grid(row=0, column=0, padx=5, pady=5, sticky="nsew")
 
+    # 左侧滚动条
+    improvedByPropertyScrollbar = ttk.Scrollbar(improvedByPropertyFrame, orient="vertical", command=improvedByPropertyTable.yview)
+    improvedByPropertyTable.configure(yscrollcommand=improvedByPropertyScrollbar.set)
+    improvedByPropertyScrollbar.grid(row=0, column=1, padx=(0, 5), pady=5, sticky="ns")
 
+    # 右侧：输入区域
+    improvedByPropertyInputFrame = ttk.Frame(improvedByPropertyFrame)
+    improvedByPropertyInputFrame.grid(row=0, column=2, sticky="nsew", padx=5, pady=5)
 
+    # 升级项名称输入
+    ttk.Label(improvedByPropertyInputFrame, text="升级项名称:").grid(row=0, column=0, padx=5, pady=5, sticky="w")
+    improvedByPropertyEntry1 = ttk.Entry(improvedByPropertyInputFrame, textvariable=improvedByEntry, width=20)
+    improvedByPropertyEntry1.grid(row=0, column=1, padx=5, pady=5)
 
+    # 图形相关字段
+    ttk.Label(improvedByPropertyInputFrame, text="俯视图文件路径:").grid(row=1, column=0, padx=5, pady=5, sticky="w")
+    improvedByPropertyEntry2 = ttk.Entry(improvedByPropertyInputFrame, textvariable=improvedByMovieEntry, width=20)
+    improvedByPropertyEntry2.grid(row=1, column=1, padx=5, pady=5)
 
+    ttk.Label(improvedByPropertyInputFrame, text="图标文件路径:").grid(row=2, column=0, padx=5, pady=5, sticky="w")
+    improvedByPropertyEntry3 = ttk.Entry(improvedByPropertyInputFrame, textvariable=improvedByIconEntry, width=20)
+    improvedByPropertyEntry3.grid(row=2, column=1, padx=5, pady=5)
 
+    ttk.Label(improvedByPropertyInputFrame, text="3D模型文件路径:").grid(row=3, column=0, padx=5, pady=5, sticky="w")
+    improvedByPropertyEntry4 = ttk.Entry(improvedByPropertyInputFrame, textvariable=improvedByMovieModelEntry, width=20)
+    improvedByPropertyEntry4.grid(row=3, column=1, padx=5, pady=5)
 
+    # 属性字段（带倍数复选框）
+    ttk.Label(improvedByPropertyInputFrame, text="受击体积:").grid(row=4, column=0, padx=5, pady=5, sticky="w")
+    improvedByPropertyEntry5 = ttk.Entry(improvedByPropertyInputFrame, textvariable=improvedBySizeEntry, width=8)
+    improvedByPropertyEntry5.grid(row=4, column=1, padx=5, pady=5)
+    ttk.Checkbutton(improvedByPropertyInputFrame, text="倍数", variable=improvedBySizeMultiplierVar).grid(row=4, column=2, padx=5, pady=5)
 
+    ttk.Label(improvedByPropertyInputFrame, text="移动速度:").grid(row=5, column=0, padx=5, pady=5, sticky="w")
+    improvedByPropertyEntry6 = ttk.Entry(improvedByPropertyInputFrame, textvariable=improvedBySpeedEntry, width=8)
+    improvedByPropertyEntry6.grid(row=5, column=1, padx=5, pady=5)
+    ttk.Checkbutton(improvedByPropertyInputFrame, text="倍数", variable=improvedBySpeedMultiplierVar).grid(row=5, column=2, padx=5, pady=5)
 
+    ttk.Label(improvedByPropertyInputFrame, text="转向速度:").grid(row=6, column=0, padx=5, pady=5, sticky="w")
+    improvedByPropertyEntry7 = ttk.Entry(improvedByPropertyInputFrame, textvariable=improvedByTurnSpeedEntry, width=8)
+    improvedByPropertyEntry7.grid(row=6, column=1, padx=5, pady=5)
+    ttk.Checkbutton(improvedByPropertyInputFrame, text="倍数", variable=improvedByTurnSpeedMultiplierVar).grid(row=6, column=2, padx=5, pady=5)
+
+    ttk.Label(improvedByPropertyInputFrame, text="最大航程:").grid(row=7, column=0, padx=5, pady=5, sticky="w")
+    improvedByPropertyEntry8 = ttk.Entry(improvedByPropertyInputFrame, textvariable=improvedByRangeEntry, width=8)
+    improvedByPropertyEntry8.grid(row=7, column=1, padx=5, pady=5)
+    ttk.Checkbutton(improvedByPropertyInputFrame, text="倍数", variable=improvedByRangeMultiplierVar).grid(row=7, column=2, padx=5, pady=5)
+
+    ttk.Label(improvedByPropertyInputFrame, text="生命值:").grid(row=8, column=0, padx=5, pady=5, sticky="w")
+    improvedByPropertyEntry9 = ttk.Entry(improvedByPropertyInputFrame, textvariable=improvedByPowerEntry, width=8)
+    improvedByPropertyEntry9.grid(row=8, column=1, padx=5, pady=5)
+    ttk.Checkbutton(improvedByPropertyInputFrame, text="倍数", variable=improvedByPowerMultiplierVar).grid(row=8, column=2, padx=5, pady=5)
+
+    # 按钮区域
+    improvedByPropertyButtonFrame = ttk.Frame(improvedByPropertyFrame)
+    improvedByPropertyButtonFrame.grid(row=1, column=0, columnspan=3, sticky="sw", padx=5, pady=5)  
+    ttk.Button(improvedByPropertyButtonFrame, text="+", command=lambda: improvedByPropertyAddToTable(), width=3).grid(row=0, column=0, padx=5, pady=5)
+    ttk.Button(improvedByPropertyButtonFrame, text="-", command=lambda: improvedByPropertyDeleteSelected(), width=3).grid(row=0, column=1, padx=5, pady=5)
+    ttk.Button(improvedByPropertyButtonFrame, text="读取选中项", command=lambda: improvedByPropertyMapToEntries(), width=12).grid(row=0, column=2, padx=5, pady=5)
+    ttk.Button(improvedByPropertyButtonFrame, text="保存至选中项", command=lambda: improvedByPropertySaveToCurrentRow(), width=12).grid(row=0, column=3, padx=5, pady=5)
+
+    # 数据存储字典，用于保存每个升级项的完整数据
+    improvedByDataDict = {}
+
+    # 表格操作函数
+    def improvedByPropertyAddToTable():
+        if improvedByEntry.get().strip():
+            # 保存当前输入的数据到字典
+            improvedByDataDict[improvedByEntry.get()] = {
+                'movie': improvedByMovieEntry.get(),
+                'icon': improvedByIconEntry.get(),
+                'movieModel': improvedByMovieModelEntry.get(),
+                'size': improvedBySizeEntry.get(),
+                'speed': improvedBySpeedEntry.get(),
+                'turnSpeed': improvedByTurnSpeedEntry.get(),
+                'range': improvedByRangeEntry.get(),
+                'power': improvedByPowerEntry.get(),
+                'sizeMultiplier': improvedBySizeMultiplierVar.get(),
+                'speedMultiplier': improvedBySpeedMultiplierVar.get(),
+                'turnSpeedMultiplier': improvedByTurnSpeedMultiplierVar.get(),
+                'rangeMultiplier': improvedByRangeMultiplierVar.get(),
+                'powerMultiplier': improvedByPowerMultiplierVar.get()
+            }
+            
+            improvedByPropertyTable.insert("", tk.END, values=(improvedByEntry.get(),))
+            improvedByEntry.set("")
+            improvedByMovieEntry.set("")
+            improvedByIconEntry.set("")
+            improvedByMovieModelEntry.set("")
+            improvedBySizeEntry.set("")
+            improvedBySpeedEntry.set("")
+            improvedByTurnSpeedEntry.set("")
+            improvedByRangeEntry.set("")
+            improvedByPowerEntry.set("")
+            improvedBySizeMultiplierVar.set(False)
+            improvedBySpeedMultiplierVar.set(False)
+            improvedByTurnSpeedMultiplierVar.set(False)
+            improvedByRangeMultiplierVar.set(False)
+            improvedByPowerMultiplierVar.set(False)
+
+    def improvedByPropertyDeleteSelected():
+        selected = improvedByPropertyTable.selection()
+        if selected:
+            itemText = improvedByPropertyTable.item(selected[0], 'values')[0]
+            # 从数据字典中删除对应的数据
+            if itemText in improvedByDataDict:
+                del improvedByDataDict[itemText]
+            improvedByPropertyTable.delete(selected[0])
+
+    def improvedByPropertyMapToEntries():
+        selected = improvedByPropertyTable.selection()
+        if selected:
+            values = improvedByPropertyTable.item(selected[0], 'values')
+            if values and len(values) > 0:
+                itemText = values[0]
+                improvedByEntry.set(itemText)
+                
+                # 从数据字典中加载对应的数据到输入区域
+                if itemText in improvedByDataDict:
+                    data = improvedByDataDict[itemText]
+                    improvedByMovieEntry.set(data['movie'])
+                    improvedByIconEntry.set(data['icon'])
+                    improvedByMovieModelEntry.set(data['movieModel'])
+                    improvedBySizeEntry.set(data['size'])
+                    improvedBySpeedEntry.set(data['speed'])
+                    improvedByTurnSpeedEntry.set(data['turnSpeed'])
+                    improvedByRangeEntry.set(data['range'])
+                    improvedByPowerEntry.set(data['power'])
+                    improvedBySizeMultiplierVar.set(data['sizeMultiplier'])
+                    improvedBySpeedMultiplierVar.set(data['speedMultiplier'])
+                    improvedByTurnSpeedMultiplierVar.set(data['turnSpeedMultiplier'])
+                    improvedByRangeMultiplierVar.set(data['rangeMultiplier'])
+                    improvedByPowerMultiplierVar.set(data['powerMultiplier'])
+
+    def improvedByPropertySaveToCurrentRow():
+        selected = improvedByPropertyTable.selection()
+        if not selected:
+            improvedByPropertyAddToTable()  # 无选中行则添加新行
+        else:
+            itemText = improvedByPropertyTable.item(selected[0], 'values')[0]
+            # 更新数据字典中的对应数据
+            improvedByDataDict[itemText] = {
+                'movie': improvedByMovieEntry.get(),
+                'icon': improvedByIconEntry.get(),
+                'movieModel': improvedByMovieModelEntry.get(),
+                'size': improvedBySizeEntry.get(),
+                'speed': improvedBySpeedEntry.get(),
+                'turnSpeed': improvedByTurnSpeedEntry.get(),
+                'range': improvedByRangeEntry.get(),
+                'power': improvedByPowerEntry.get(),
+                'sizeMultiplier': improvedBySizeMultiplierVar.get(),
+                'speedMultiplier': improvedBySpeedMultiplierVar.get(),
+                'turnSpeedMultiplier': improvedByTurnSpeedMultiplierVar.get(),
+                'rangeMultiplier': improvedByRangeMultiplierVar.get(),
+                'powerMultiplier': improvedByPowerMultiplierVar.get()
+            }
+            
+            improvedByPropertyTable.item(selected[0], values=(improvedByEntry.get(),))
+            improvedByEntry.set("")
+            improvedByMovieEntry.set("")
+            improvedByIconEntry.set("")
+            improvedByMovieModelEntry.set("")
+            improvedBySizeEntry.set("")
+            improvedBySpeedEntry.set("")
+            improvedByTurnSpeedEntry.set("")
+            improvedByRangeEntry.set("")
+            improvedByPowerEntry.set("")
+            improvedBySizeMultiplierVar.set(False)
+            improvedBySpeedMultiplierVar.set(False)
+            improvedByTurnSpeedMultiplierVar.set(False)
+            improvedByRangeMultiplierVar.set(False)
+            improvedByPowerMultiplierVar.set(False)
+
+    def improvedByPropertyOutputTable():
+        items = improvedByPropertyTable.get_children()
+        if not items:
+            print("表格为空")
+            improvedByPropertyTableData.set("")
+            return ""
+        table_data = ""
+        for item in items:
+            values = improvedByPropertyTable.item(item, 'values')
+            if values and len(values) > 0:
+                improvedByName = values[0]
+                table_data += f"ImprovedBy \"{improvedByName}\" \n"
+                table_data += "{\n"
+                
+                # 处理Movie
+                if improvedByMovieEntry.get():
+                    table_data += f"    Movie \"{improvedByMovieEntry.get()}\"\n"
+                
+                # 处理Icon
+                if improvedByIconEntry.get():
+                    table_data += f"    Icon \"{improvedByIconEntry.get()}\"\n"
+                
+                # 处理Movie Model
+                if improvedByMovieModelEntry.get():
+                    table_data += f"    Movie Model \"{improvedByMovieModelEntry.get()}\"\n"
+                
+                # 处理Size
+                if improvedBySizeEntry.get():
+                    if improvedBySizeMultiplierVar.get():
+                        table_data += f"    Size {improvedBySizeEntry.get()}\n"
+                    else:
+                        table_data += f"    Set Size {improvedBySizeEntry.get()}\n"
+                
+                # 处理Speed
+                if improvedBySpeedEntry.get():
+                    if improvedBySpeedMultiplierVar.get():
+                        table_data += f"    Speed {improvedBySpeedEntry.get()}\n"
+                    else:
+                        table_data += f"    Set Speed {improvedBySpeedEntry.get()}\n"
+                
+                # 处理TurnSpeed
+                if improvedByTurnSpeedEntry.get():
+                    if improvedByTurnSpeedMultiplierVar.get():
+                        table_data += f"    TurnSpeed {improvedByTurnSpeedEntry.get()}\n"
+                    else:
+                        table_data += f"    Set TurnSpeed {improvedByTurnSpeedEntry.get()}\n"
+                
+                # 处理Range
+                if improvedByRangeEntry.get():
+                    if improvedByRangeMultiplierVar.get():
+                        table_data += f"    Range {improvedByRangeEntry.get()}\n"
+                    else:
+                        table_data += f"    Set Range {improvedByRangeEntry.get()}\n"
+                
+                # 处理Power
+                if improvedByPowerEntry.get():
+                    if improvedByPowerMultiplierVar.get():
+                        table_data += f"    Power {improvedByPowerEntry.get()}\n"
+                    else:
+                        table_data += f"    Set Power {improvedByPowerEntry.get()}\n"
+                
+                table_data += "}\n\n"
+        
+        improvedByPropertyTableData.set(table_data)
+        print(improvedByPropertyTableData.get())
+        return table_data
+
+    # 绑定表格选择事件
+    improvedByPropertyTable.bind('<<TreeviewSelect>>', lambda event: improvedByPropertyMapToEntries())
+
+    # 第二表格：参数设置表格
+    improvedByParameterFrame = ttk.Labelframe(Frame6, text="参数设置表格")
+    improvedByParameterFrame.grid(row=0, column=1, sticky="nsew", padx=5, pady=5)
+
+    improvedByParameterTableData = tk.StringVar()
+
+    # 定义变量
+    improvedByParamEntry = tk.StringVar()
+    improvedByParamNameEntry = tk.StringVar()
+    improvedByParamValueEntry = tk.StringVar()
+
+    def improvedByParameterAddToTable():
+        if improvedByParamEntry.get().strip():
+            improvedByParameterTable.insert("", tk.END, values=(
+                improvedByParamEntry.get(),
+                improvedByParamNameEntry.get(),
+                improvedByParamValueEntry.get()
+            ))
+            improvedByParamEntry.set("")
+            improvedByParamNameEntry.set("")
+            improvedByParamValueEntry.set("")
+
+    def improvedByParameterDeleteSelected():
+        selected = improvedByParameterTable.selection()
+        if selected:
+            improvedByParameterTable.delete(selected[0])
+
+    def improvedByParameterMapToEntries():
+        selected = improvedByParameterTable.selection()
+        if selected:
+            values = improvedByParameterTable.item(selected[0], 'values')
+            improvedByParamEntry.set(values[0] if len(values) > 0 else "")
+            improvedByParamNameEntry.set(values[1] if len(values) > 1 else "")
+            improvedByParamValueEntry.set(values[2] if len(values) > 2 else "")
+
+    def improvedByParameterSaveToCurrentRow():
+        selected = improvedByParameterTable.selection()
+        if not selected:
+            improvedByParameterAddToTable()  # 无选中行则添加新行
+        else:
+            improvedByParameterTable.item(selected[0], values=(
+                improvedByParamEntry.get(),
+                improvedByParamNameEntry.get(),
+                improvedByParamValueEntry.get()
+            ))
+            improvedByParamEntry.set("")
+            improvedByParamNameEntry.set("")
+            improvedByParamValueEntry.set("")
+
+    def improvedByParameterOutputTable():
+        items = improvedByParameterTable.get_children()
+        if not items:
+            print("表格为空")
+            improvedByParameterTableData.set("")
+            return ""
+        table_data = ""
+        for item in items:
+            values = improvedByParameterTable.item(item, 'values')
+            if values and len(values) > 0:
+                improvedByName = values[0]
+                paramName = values[1] if len(values) > 1 else ""
+                paramValue = values[2] if len(values) > 2 else ""
+                
+                # 根据空值处理规则生成代码
+                if paramName and paramValue:
+                    table_data += f"ImprovedBy \"{improvedByName}\" {paramName} {paramValue}\n"
+                elif paramName and not paramValue:
+                    table_data += f"ImprovedBy \"{improvedByName}\" {paramName}\n"
+                elif not paramName and paramValue:
+                    table_data += f"ImprovedBy \"{improvedByName}\" {paramValue}\n"
+                else:
+                    table_data += f"ImprovedBy \"{improvedByName}\"\n"
+        
+        improvedByParameterTableData.set(table_data)
+        print(improvedByParameterTableData.get())
+        return table_data
+
+    # 使用grid布局管理器来避免框架互相干扰
+    improvedByParameterSheetFrame = ttk.Frame(improvedByParameterFrame)
+    improvedByParameterSheetFrame.grid(row=0, column=0, sticky="nsew", padx=5, pady=5) 
+
+    # 输入区域
+    improvedByParameterInputFrame = ttk.Frame(improvedByParameterSheetFrame)
+    improvedByParameterInputFrame.grid(row=0, column=0, columnspan=2, sticky="w", padx=5, pady=5)
+
+    # 第一行：升级项名称
+    ttk.Label(improvedByParameterInputFrame, text="升级项名称:").grid(row=0, column=0, padx=5, pady=5, sticky="w")
+    improvedByParameterEntry1 = ttk.Entry(improvedByParameterInputFrame, textvariable=improvedByParamEntry, width=20)
+    improvedByParameterEntry1.grid(row=0, column=1, padx=5, pady=5)
+
+    # 第二行：参数名和参数值
+    ttk.Label(improvedByParameterInputFrame, text="参数名:").grid(row=1, column=0, padx=5, pady=5, sticky="w")
+    improvedByParameterCombobox = ttk.Combobox(improvedByParameterInputFrame, textvariable=improvedByParamNameEntry, 
+                                              values=["Size", "Speed", "TurnSpeed", "Range", "Power"], width=18)
+    improvedByParameterCombobox.grid(row=1, column=1, padx=5, pady=5)
+
+    ttk.Label(improvedByParameterInputFrame, text="参数值:").grid(row=2, column=0, padx=5, pady=5, sticky="w")
+    improvedByParameterEntry2 = ttk.Entry(improvedByParameterInputFrame, textvariable=improvedByParamValueEntry, width=20)
+    improvedByParameterEntry2.grid(row=2, column=1, padx=5, pady=5)
+
+    # 创建表格和滚动条
+    improvedByParameterTable = ttk.Treeview(improvedByParameterSheetFrame, columns=("col1", "col2", "col3"), show="headings", height=12)
+    improvedByParameterTable.heading("col1", text="升级项")
+    improvedByParameterTable.heading("col2", text="参数名")
+    improvedByParameterTable.heading("col3", text="参数值")
+    
+    improvedByParameterTable.column("col1", width=120)
+    improvedByParameterTable.column("col2", width=100)
+    improvedByParameterTable.column("col3", width=100)
+    
+    # 创建垂直滚动条
+    improvedByParameterScrollbar = ttk.Scrollbar(improvedByParameterSheetFrame, orient="vertical", command=improvedByParameterTable.yview)
+    improvedByParameterTable.configure(yscrollcommand=improvedByParameterScrollbar.set)
+    
+    # 使用grid布局放置表格和滚动条
+    improvedByParameterTable.grid(row=1, column=0, padx=5, pady=5, sticky="nsew")
+    improvedByParameterScrollbar.grid(row=1, column=1, padx=(0, 5), pady=5, sticky="ns")
+    
+    # 配置网格权重使表格可以扩展
+    improvedByParameterSheetFrame.grid_rowconfigure(1, weight=1)
+    improvedByParameterSheetFrame.grid_columnconfigure(0, weight=1)
+
+    improvedByParameterButtonFrame = ttk.Frame(improvedByParameterFrame)
+    improvedByParameterButtonFrame.grid(row=1, column=0, sticky="sw", padx=5, pady=5)  
+    ttk.Button(improvedByParameterButtonFrame, text="+", command=improvedByParameterAddToTable, width=3).grid(row=0, column=0, padx=5, pady=5)
+    ttk.Button(improvedByParameterButtonFrame, text="-", command=improvedByParameterDeleteSelected, width=3).grid(row=0, column=1, padx=5, pady=5)
+    ttk.Button(improvedByParameterButtonFrame, text="读取选中项", command=improvedByParameterMapToEntries, width=12).grid(row=0, column=2, padx=5, pady=5)
+    ttk.Button(improvedByParameterButtonFrame, text="保存至选中项", command=improvedByParameterSaveToCurrentRow, width=12).grid(row=0, column=3, padx=5, pady=5)
+
+    # 绑定表格选择事件
+    improvedByParameterTable.bind('<<TreeviewSelect>>', lambda event: improvedByParameterMapToEntries())
+
+    ## 添加输出按钮到全局按钮框架
+    #ttk.Button(globalButtonFrame, command=improvedByPropertyOutputTable, text="输出属性表").pack(side="left", padx=5)
+    #ttk.Button(globalButtonFrame, command=improvedByParameterOutputTable, text="输出参数表").pack(side="left", padx=5)
+
+    def debugprint():
+        improvedByParameterOutputTable()
+        print(f"{improvedByPropertyTableData.get()}")
 
 
 
@@ -2586,7 +2993,7 @@ def main():
     ttk.Button(globalButtonFrame, command=cancelNameString, text="清除").pack(side="left", padx=5)
     ttk.Button(globalButtonFrame, command=fillDefault, text="默认").pack(side="left", padx=5)
     ttk.Button(globalButtonFrame, command=generateCode, text="生成").pack(side="left", padx=5)
-    ttk.Button(globalButtonFrame, command=missileOutputTable, text="debug").pack(side="left", padx=5)
+    ttk.Button(globalButtonFrame, command=debugprint, text="debug").pack(side="left", padx=5)
 
     screenSize = root.maxsize()
     print(screenSize)
