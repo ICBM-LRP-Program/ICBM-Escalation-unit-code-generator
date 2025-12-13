@@ -585,6 +585,9 @@ class UnitCodeGeneratorApp:
         # 更新窗口标题
         self.Root.title(self.Lang.Get("AppTitle"))
         
+        # 重新创建菜单栏
+        self.CreateMenuBar()
+        
         # 更新标签页标题
         if hasattr(self, 'Notebook') and self.Notebook is not None:
             # 获取所有标签页的ID和索引
@@ -612,8 +615,10 @@ class UnitCodeGeneratorApp:
         # 重新创建基本标签页以更新文本
         self.RecreateBasicInfoTab()
         
-        # 更新底部按钮文本
-        self.UpdateBottomButtons()
+        # 重新创建底部按钮
+        for widget in self.ButtonFrame.winfo_children():
+            widget.destroy()
+        self.CreateBottomButtons()
         
         # 更新自定义参数表格标题
         if hasattr(self, 'CustomParamsTable'):
@@ -1075,16 +1080,16 @@ class UnitCodeGeneratorApp:
     
     def CreateAirwayGroup(self, ParentFrame):
         """创建航线组"""
-        GroupFrame = ttk.LabelFrame(ParentFrame, text="航线配置")
+        GroupFrame = ttk.LabelFrame(ParentFrame, text=self.Lang.Get("Group_AirwayConfig"))
         GroupFrame.grid(row=0, column=1, rowspan=2, padx=5, pady=5, sticky="nsew")
         
         # 输入区
         InputFrame = ttk.Frame(GroupFrame)
         InputFrame.pack(fill="x", padx=5, pady=5)
-        ttk.Label(InputFrame, text="发射数:").grid(row=0, column=0, padx=2)
+        ttk.Label(InputFrame, text=self.Lang.Get("Label_LaunchCount")).grid(row=0, column=0, padx=2)
         self.AirwayLaunchEntry = ttk.Entry(InputFrame, width=8)
         self.AirwayLaunchEntry.grid(row=0, column=1, padx=2)
-        ttk.Label(InputFrame, text="间隔:").grid(row=1, column=0, padx=2)
+        ttk.Label(InputFrame, text=self.Lang.Get("Label_Interval")).grid(row=1, column=0, padx=2)
         self.AirwayTimeEntry = ttk.Entry(InputFrame, width=8)
         self.AirwayTimeEntry.grid(row=1, column=1, padx=2)
         ttk.Button(InputFrame, text="+", width=3, command=self.AddAirway).grid(row=0, column=2, padx=2)
@@ -1094,8 +1099,8 @@ class UnitCodeGeneratorApp:
         TableFrame = ttk.Frame(GroupFrame)
         TableFrame.pack(fill="both", expand=True, padx=5, pady=5)
         self.AirwayTable = ttk.Treeview(TableFrame, columns=("Launch", "Time"), show="headings", height=18)
-        self.AirwayTable.heading("Launch", text="发射数")
-        self.AirwayTable.heading("Time", text="间隔")
+        self.AirwayTable.heading("Launch", text=self.Lang.Get("Label_LaunchCount").rstrip(":"))
+        self.AirwayTable.heading("Time", text=self.Lang.Get("Label_Interval").rstrip(":"))
         self.AirwayTable.column("Launch", width=80)
         self.AirwayTable.column("Time", width=80)
         Scrollbar = ttk.Scrollbar(TableFrame, orient="vertical", command=self.AirwayTable.yview)
@@ -1145,31 +1150,31 @@ class UnitCodeGeneratorApp:
     
     def CreateCanHostAircraftsGroup(self, ParentFrame):
         """创建子单位组"""
-        GroupFrame = ttk.LabelFrame(ParentFrame, text="子单位配置")
+        GroupFrame = ttk.LabelFrame(ParentFrame, text=self.Lang.Get("Group_SubUnitConfig"))
         GroupFrame.grid(row=0, column=2, rowspan=2, padx=5, pady=5, sticky="nsew")
         
         # 输入区
         InputFrame = ttk.Frame(GroupFrame)
         InputFrame.pack(fill="x", padx=5, pady=5)
         
-        ttk.Label(InputFrame, text="单位名称:").grid(row=0, column=0, padx=2, sticky="w")
+        ttk.Label(InputFrame, text=self.Lang.Get("Label_UnitName")).grid(row=0, column=0, padx=2, sticky="w")
         self.HostUnitEntry = ttk.Combobox(InputFrame, values=self.DB.Get("Units"), width=17)
         self.HostUnitEntry.grid(row=0, column=1, columnspan=2, padx=2)
         
-        ttk.Label(InputFrame, text="数量:").grid(row=0, column=3, padx=2)
+        ttk.Label(InputFrame, text=self.Lang.Get("Label_Count")).grid(row=0, column=3, padx=2)
         self.HostCountEntry = ttk.Entry(InputFrame, width=6)
         self.HostCountEntry.grid(row=0, column=4, padx=2)
         
-        ttk.Label(InputFrame, text="航线:").grid(row=1, column=0, padx=2, sticky="w")
+        ttk.Label(InputFrame, text=self.Lang.Get("Label_Airway")).grid(row=1, column=0, padx=2, sticky="w")
         self.HostAirwayEntry = ttk.Entry(InputFrame, width=6)
         self.HostAirwayEntry.grid(row=1, column=1, padx=2)
         
-        ttk.Label(InputFrame, text="巡逻:").grid(row=1, column=2, padx=2)
+        ttk.Label(InputFrame, text=self.Lang.Get("Label_Patrol")).grid(row=1, column=2, padx=2)
         self.HostPatrolEntry = ttk.Entry(InputFrame, width=6)
         self.HostPatrolEntry.grid(row=1, column=3, padx=2)
         
         self.HostAutoPatrolVar = tk.BooleanVar()
-        ttk.Checkbutton(InputFrame, text="自动巡逻", variable=self.HostAutoPatrolVar).grid(row=1, column=4, padx=2)
+        ttk.Checkbutton(InputFrame, text=self.Lang.Get("Label_AutoPatrol"), variable=self.HostAutoPatrolVar).grid(row=1, column=4, padx=2)
         
         BtnInputFrame = ttk.Frame(InputFrame)
         BtnInputFrame.grid(row=0, column=5, rowspan=2, padx=5)
@@ -1181,11 +1186,11 @@ class UnitCodeGeneratorApp:
         TableFrame.pack(fill="both", expand=True, padx=5, pady=5)
         Columns = ("Unit", "Count", "Airway", "Patrol", "AutoPatrol")
         self.HostTable = ttk.Treeview(TableFrame, columns=Columns, show="headings", height=16)
-        self.HostTable.heading("Unit", text="单位")
-        self.HostTable.heading("Count", text="数量")
-        self.HostTable.heading("Airway", text="航线")
-        self.HostTable.heading("Patrol", text="巡逻")
-        self.HostTable.heading("AutoPatrol", text="自巡逻")
+        self.HostTable.heading("Unit", text=self.Lang.Get("Col_Unit"))
+        self.HostTable.heading("Count", text=self.Lang.Get("Col_Count"))
+        self.HostTable.heading("Airway", text=self.Lang.Get("Col_Airway"))
+        self.HostTable.heading("Patrol", text=self.Lang.Get("Col_PatrolCount"))
+        self.HostTable.heading("AutoPatrol", text=self.Lang.Get("Col_AutoPatrol"))
         self.HostTable.column("Unit", width=150)
         self.HostTable.column("Count", width=50)
         self.HostTable.column("Airway", width=50)
@@ -1272,14 +1277,14 @@ class UnitCodeGeneratorApp:
     
     def CreateConfigPanel(self, ParentFrame):
         """创建配置面板（左侧）"""
-        ConfigFrame = ttk.LabelFrame(ParentFrame, text="武器配置 (Config)")
+        ConfigFrame = ttk.LabelFrame(ParentFrame, text=self.Lang.Get("Group_WeaponConfig"))
         ConfigFrame.grid(row=0, column=0, padx=5, pady=5, sticky="nsew")
         
         # 输入区
         InputFrame = ttk.Frame(ConfigFrame)
         InputFrame.pack(fill="x", padx=5, pady=5)
         
-        ttk.Label(InputFrame, text="配置名称:").grid(row=0, column=0, padx=2, sticky="w")
+        ttk.Label(InputFrame, text=self.Lang.Get("Label_ConfigName")).grid(row=0, column=0, padx=2, sticky="w")
         self.ConfigNameEntry = ttk.Entry(InputFrame, width=20)
         self.ConfigNameEntry.grid(row=0, column=1, padx=2)
         
@@ -1305,7 +1310,7 @@ class UnitCodeGeneratorApp:
         
         Columns = ("Name", "Default", "OnlyFull")
         self.ConfigTable = ttk.Treeview(TableFrame, columns=Columns, show="headings", height=23)
-        self.ConfigTable.heading("Name", text="配置名称")
+        self.ConfigTable.heading("Name", text=self.Lang.Get("Label_ConfigName").rstrip(":"))
         self.ConfigTable.heading("Default", text="Def")
         self.ConfigTable.heading("OnlyFull", text="Full")
         self.ConfigTable.column("Name", width=200)
@@ -1333,18 +1338,18 @@ class UnitCodeGeneratorApp:
     
     def CreateWeaponPanel(self, ParentFrame):
         """创建武器面板（右侧）"""
-        WeaponFrame = ttk.LabelFrame(ParentFrame, text="武器列表 (Weapon)")
+        WeaponFrame = ttk.LabelFrame(ParentFrame, text=self.Lang.Get("Group_WeaponList"))
         WeaponFrame.grid(row=0, column=1, padx=5, pady=5, sticky="nsew")
         
         # 输入区
         InputFrame = ttk.Frame(WeaponFrame)
         InputFrame.pack(fill="x", padx=5, pady=5)
         
-        ttk.Label(InputFrame, text="武器名称:").grid(row=0, column=0, padx=2, sticky="w")
+        ttk.Label(InputFrame, text=self.Lang.Get("Label_WeaponName")).grid(row=0, column=0, padx=2, sticky="w")
         self.WeaponNameEntry = ttk.Combobox(InputFrame, values=self.DB.Get("Weapons"), width=18)
         self.WeaponNameEntry.grid(row=0, column=1, padx=2)
         
-        ttk.Label(InputFrame, text="数量:").grid(row=0, column=2, padx=2)
+        ttk.Label(InputFrame, text=self.Lang.Get("Label_Count")).grid(row=0, column=2, padx=2)
         self.WeaponCountEntry = ttk.Entry(InputFrame, width=8)
         self.WeaponCountEntry.grid(row=0, column=3, padx=2)
         
@@ -1380,8 +1385,8 @@ class UnitCodeGeneratorApp:
         
         Columns = ("Name", "Count", "Launch", "Time", "Auto", "Prin", "Off")
         self.WeaponTable = ttk.Treeview(TableFrame, columns=Columns, show="headings", height=20)
-        self.WeaponTable.heading("Name", text="武器名称")
-        self.WeaponTable.heading("Count", text="数量")
+        self.WeaponTable.heading("Name", text=self.Lang.Get("Label_WeaponName").rstrip(":"))
+        self.WeaponTable.heading("Count", text=self.Lang.Get("Label_Count").rstrip(":"))
         self.WeaponTable.heading("Launch", text="Launch")
         self.WeaponTable.heading("Time", text="Time")
         self.WeaponTable.heading("Auto", text="Auto")
@@ -1430,13 +1435,13 @@ class UnitCodeGeneratorApp:
         """添加武器配置"""
         Name = self.ConfigNameEntry.get().strip()
         if not Name or Name == "Default":
-            messagebox.showwarning("警告", "配置名称不能为空或为Default！")
+            messagebox.showwarning(self.Lang.Get("Msg_Warning"), self.Lang.Get("Msg_ConfigNameEmpty"))
             return
         
         # 检查是否已存在
         for Item in self.ConfigTable.get_children():
             if self.ConfigTable.item(Item, "values")[0] == Name:
-                messagebox.showwarning("警告", "配置名称已存在！")
+                messagebox.showwarning(self.Lang.Get("Msg_Warning"), self.Lang.Get("Msg_ConfigNameExists"))
                 return
         
         DefaultStr = "√" if self.ConfigDefaultVar.get() else ""
@@ -1460,7 +1465,7 @@ class UnitCodeGeneratorApp:
         
         Values = self.ConfigTable.item(Selected[0], "values")
         if not Values or Values[0] == "Default":
-            messagebox.showwarning("警告", "不能删除Default配置！")
+            messagebox.showwarning(self.Lang.Get("Msg_Warning"), self.Lang.Get("Msg_CannotDeleteDefault"))
             return
         
         ConfigName = Values[0]
@@ -1527,14 +1532,14 @@ class UnitCodeGeneratorApp:
         
         Name = self.ConfigNameEntry.get().strip()
         if not Name:
-            messagebox.showwarning("警告", "配置名称不能为空！")
+            messagebox.showwarning(self.Lang.Get("Msg_Warning"), self.Lang.Get("Msg_ConfigNameRequired"))
             return
         
         OldValues = self.ConfigTable.item(Selected[0], "values")
         OldName = OldValues[0]
         
         if OldName == "Default" and Name != "Default":
-            messagebox.showwarning("警告", "不能修改Default配置的名称！")
+            messagebox.showwarning(self.Lang.Get("Msg_Warning"), self.Lang.Get("Msg_CannotModifyDefaultName"))
             return
         
         DefaultStr = "√" if self.ConfigDefaultVar.get() else ""
@@ -1552,14 +1557,14 @@ class UnitCodeGeneratorApp:
     def AddWeapon(self):
         """添加武器到当前配置"""
         if not self.CurrentSelectedConfig:
-            messagebox.showwarning("警告", "请先选择一个配置！")
+            messagebox.showwarning(self.Lang.Get("Msg_Warning"), self.Lang.Get("Msg_SelectConfigFirst"))
             return
         
         Name = self.WeaponNameEntry.get().strip()
         Count = self.WeaponCountEntry.get().strip()
         
         if not Name or not Count:
-            messagebox.showwarning("警告", "武器名称和数量不能为空！")
+            messagebox.showwarning(self.Lang.Get("Msg_Warning"), self.Lang.Get("Msg_WeaponNameCountRequired"))
             return
         
         Launch = self.WeaponLaunchEntry.get().strip()
@@ -1651,7 +1656,7 @@ class UnitCodeGeneratorApp:
         Count = self.WeaponCountEntry.get().strip()
         
         if not Name or not Count:
-            messagebox.showwarning("警告", "武器名称和数量不能为空！")
+            messagebox.showwarning(self.Lang.Get("Msg_Warning"), self.Lang.Get("Msg_WeaponNameCountRequired"))
             return
         
         Index = self.WeaponTable.index(Selected[0])
@@ -1685,7 +1690,7 @@ class UnitCodeGeneratorApp:
         
         Values = self.ConfigTable.item(Selected[0], "values")
         if Values[0] == "Default":
-            messagebox.showwarning("警告", "Default配置必须保持在第一位！")
+            messagebox.showwarning(self.Lang.Get("Msg_Warning"), self.Lang.Get("Msg_DefaultConfigPosition"))
             return
         
         Index = self.ConfigTable.index(Selected[0])
@@ -1700,7 +1705,7 @@ class UnitCodeGeneratorApp:
         
         Values = self.ConfigTable.item(Selected[0], "values")
         if Values[0] == "Default":
-            messagebox.showwarning("警告", "Default配置必须保持在第一位！")
+            messagebox.showwarning(self.Lang.Get("Msg_Warning"), self.Lang.Get("Msg_DefaultConfigPosition"))
             return
         
         Index = self.ConfigTable.index(Selected[0])
@@ -1848,12 +1853,12 @@ class UnitCodeGeneratorApp:
         Frame.rowconfigure(0, weight=1)
         
         # 雷达配置
-        RadarFrame = ttk.LabelFrame(Frame, text="雷达配置")
+        RadarFrame = ttk.LabelFrame(Frame, text=self.Lang.Get("Group_RadarConfig"))
         RadarFrame.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
         
         RadarInputFrame = ttk.Frame(RadarFrame)
         RadarInputFrame.pack(fill="x", padx=5, pady=5)
-        ttk.Label(RadarInputFrame, text="雷达名称:").pack(side="left", padx=2)
+        ttk.Label(RadarInputFrame, text=self.Lang.Get("Label_RadarName")).pack(side="left", padx=2)
         self.RadarEntry = ttk.Combobox(RadarInputFrame, values=self.DB.Get("Radars"), width=30)
         self.RadarEntry.pack(side="left", padx=2)
         ttk.Button(RadarInputFrame, text="+", width=3, command=self.AddRadar).pack(side="left", padx=2)
@@ -1862,7 +1867,7 @@ class UnitCodeGeneratorApp:
         TableFrame = ttk.Frame(RadarFrame)
         TableFrame.pack(fill="both", expand=True, padx=5, pady=5)
         self.RadarTable = ttk.Treeview(TableFrame, columns=("Radar",), show="headings", height=20)
-        self.RadarTable.heading("Radar", text="雷达名称")
+        self.RadarTable.heading("Radar", text=self.Lang.Get("Col_Radar"))
         self.RadarTable.column("Radar", width=350)
         Scrollbar = ttk.Scrollbar(TableFrame, orient="vertical", command=self.RadarTable.yview)
         self.RadarTable.configure(yscrollcommand=Scrollbar.set)
@@ -1875,12 +1880,12 @@ class UnitCodeGeneratorApp:
         ttk.Button(BtnFrame, text=self.Lang.Get("Btn_Save"), width=8, command=self.SaveRadar).pack(side="left", padx=2)
         
         # 修改器配置
-        ModifierFrame = ttk.LabelFrame(Frame, text="修改器配置")
+        ModifierFrame = ttk.LabelFrame(Frame, text=self.Lang.Get("Group_ModifierConfig"))
         ModifierFrame.grid(row=0, column=1, padx=10, pady=10, sticky="nsew")
         
         ModInputFrame = ttk.Frame(ModifierFrame)
         ModInputFrame.pack(fill="x", padx=5, pady=5)
-        ttk.Label(ModInputFrame, text="修改器:").pack(side="left", padx=2)
+        ttk.Label(ModInputFrame, text=self.Lang.Get("Label_Modifier")).pack(side="left", padx=2)
         self.ModifierNameEntry = ttk.Combobox(ModInputFrame, values=self.DB.Get("Modifiers"), width=25)
         self.ModifierNameEntry.pack(side="left", padx=2)
         ttk.Button(ModInputFrame, text="+", width=3, command=self.AddModifier).pack(side="left", padx=2)
@@ -1889,7 +1894,7 @@ class UnitCodeGeneratorApp:
         ModTableFrame = ttk.Frame(ModifierFrame)
         ModTableFrame.pack(fill="both", expand=True, padx=5, pady=5)
         self.ModifierTable = ttk.Treeview(ModTableFrame, columns=("Name",), show="headings", height=18)
-        self.ModifierTable.heading("Name", text="修改器名称")
+        self.ModifierTable.heading("Name", text=self.Lang.Get("Col_ModifierName"))
         self.ModifierTable.column("Name", width=360)
         ModScrollbar = ttk.Scrollbar(ModTableFrame, orient="vertical", command=self.ModifierTable.yview)
         self.ModifierTable.configure(yscrollcommand=ModScrollbar.set)
@@ -1968,50 +1973,50 @@ class UnitCodeGeneratorApp:
         
         # 状态设置组
         self.StateVars = {}
-        StateFrame = ttk.LabelFrame(Frame, text="状态设置")
+        StateFrame = ttk.LabelFrame(Frame, text=self.Lang.Get("Group_StateSettings"))
         StateFrame.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
         
         # 状态名称
         StateFields = [
-            ("HighState", "高状态名称:", 0),
-            ("LowState", "低状态名称:", 1),
-            ("TimeToHighState", "切换高状态时间:", 2),
-            ("TimeToLowState", "切换低状态时间:", 3),
-            ("HighStateStringIDX", "高状态字符串索引:", 4),
-            ("LowStateStringIDX", "低状态字符串索引:", 5),
-            ("StateStringIDX", "当前状态字符串索引:", 6),
-            ("StateIcon", "状态图标路径:", 7),
-            ("ToHighStateIcon", "切换高状态图标:", 8),
-            ("ToLowStateIcon", "切换低状态图标:", 9),
-            ("ToHighStateProcessingStringIDX", "高状态处理字符串:", 10),
-            ("ToLowStateProcessingStringIDX", "低状态处理字符串:", 11),
-            ("AutoOnRestDelay", "切换高状态延迟:", 12)
+            ("HighState", "Label_HighStateName", 0),
+            ("LowState", "Label_LowStateName", 1),
+            ("TimeToHighState", "Label_TimeToHighState", 2),
+            ("TimeToLowState", "Label_TimeToLowState", 3),
+            ("HighStateStringIDX", "Label_HighStateStringIDX", 4),
+            ("LowStateStringIDX", "Label_LowStateStringIDX", 5),
+            ("StateStringIDX", "Label_StateStringIDX", 6),
+            ("StateIcon", "Label_StateIcon", 7),
+            ("ToHighStateIcon", "Label_ToHighStateIcon", 8),
+            ("ToLowStateIcon", "Label_ToLowStateIcon", 9),
+            ("ToHighStateProcessingStringIDX", "Label_ToHighStateProcessingStringIDX", 10),
+            ("ToLowStateProcessingStringIDX", "Label_ToLowStateProcessingStringIDX", 11),
+            ("AutoOnRestDelay", "Label_AutoOnRestDelay", 12)
         ]
         
-        for Key, Label, Row in StateFields:
-            ttk.Label(StateFrame, text=Label).grid(row=Row, column=0, padx=10, pady=5, sticky="w")
+        for Key, LabelKey, Row in StateFields:
+            ttk.Label(StateFrame, text=self.Lang.Get(LabelKey)).grid(row=Row, column=0, padx=10, pady=5, sticky="w")
             Var = tk.StringVar()
             self.StateVars[Key] = Var
             ttk.Entry(StateFrame, textvariable=Var, width=30).grid(row=Row, column=1, padx=10, pady=5, sticky="w")
         
         # 自动切换组
-        AutoFrame = ttk.LabelFrame(Frame, text="自动切换设置")
+        AutoFrame = ttk.LabelFrame(Frame, text=self.Lang.Get("Group_AutoShift"))
         AutoFrame.grid(row=0, column=1, padx=10, pady=10, sticky="nsew")
         
         # 切换选项：High/Low/None
         ShiftOptions = ["", "High", "Low", "None"]
         ShiftFields = [
-            ("RetreatShift", "撤退状态:", 0),
-            ("AttackShift", "攻击状态:", 1),
-            ("DefenceShift", "防御状态:", 2),
-            ("FastMoveShift", "快速移动状态:", 3),
-            ("UnderIceShift", "冰下状态:", 4),
-            ("AutoOnMove", "移动时自动切换:", 5),
-            ("AutoOnRest", "待命时自动切换:", 6)
+            ("RetreatShift", "Label_RetreatShift", 0),
+            ("AttackShift", "Label_AttackShift", 1),
+            ("DefenceShift", "Label_DefenceShift", 2),
+            ("FastMoveShift", "Label_FastMoveShift", 3),
+            ("UnderIceShift", "Label_UnderIceShift", 4),
+            ("AutoOnMove", "Label_AutoOnMove", 5),
+            ("AutoOnRest", "Label_AutoOnRest", 6)
         ]
         
-        for Key, Label, Row in ShiftFields:
-            ttk.Label(AutoFrame, text=Label).grid(row=Row, column=0, padx=10, pady=8, sticky="w")
+        for Key, LabelKey, Row in ShiftFields:
+            ttk.Label(AutoFrame, text=self.Lang.Get(LabelKey)).grid(row=Row, column=0, padx=10, pady=8, sticky="w")
             Var = tk.StringVar()
             self.StateVars[Key] = Var
             Combo = ttk.Combobox(AutoFrame, textvariable=Var, values=ShiftOptions, width=15, state="readonly")
@@ -2216,8 +2221,8 @@ class UnitCodeGeneratorApp:
         ButtonFrame = ttk.Frame(self.ButtonFrame)
         ButtonFrame.pack(side="bottom", anchor="se", padx=5, pady=5)
         
-        ttk.Button(ButtonFrame, text="Debug",
-                   command=self.DebugPrintWindowSize).pack(side="left", padx=5)
+        # ttk.Button(ButtonFrame, text="Debug",
+        #            command=self.DebugPrintWindowSize).pack(side="left", padx=5)
         ttk.Button(ButtonFrame, text=self.Lang.Get("Btn_Clear"),
                    command=self.ClearAll).pack(side="left", padx=5)
         ttk.Button(ButtonFrame, text=self.Lang.Get("Btn_Default"),
@@ -2281,7 +2286,7 @@ class UnitCodeGeneratorApp:
         
         # 显示结果窗口
         OutputWindow = tk.Toplevel(self.Root)
-        OutputWindow.title("Generated Code")
+        OutputWindow.title(self.Lang.Get("Window_GeneratedCode"))
         OutputWindow.geometry("700x800")
         
         # 顶部按钮栏
@@ -2303,9 +2308,9 @@ class UnitCodeGeneratorApp:
                     f.write(Code)
                 messagebox.showinfo(self.Lang.Get("Msg_Success"), f"代码已保存到 {FilePath}")
         
-        ttk.Button(BtnFrame, text="复制代码", command=CopyToClipboard).pack(side="left", padx=5)
-        ttk.Button(BtnFrame, text="保存到文件", command=SaveToFile).pack(side="left", padx=5)
-        ttk.Button(BtnFrame, text="关闭", command=OutputWindow.destroy).pack(side="right", padx=5)
+        ttk.Button(BtnFrame, text=self.Lang.Get("Btn_CopyCode"), command=CopyToClipboard).pack(side="left", padx=5)
+        ttk.Button(BtnFrame, text=self.Lang.Get("Btn_SaveToFile"), command=SaveToFile).pack(side="left", padx=5)
+        ttk.Button(BtnFrame, text=self.Lang.Get("Btn_Close"), command=OutputWindow.destroy).pack(side="right", padx=5)
         
         # 文本区域
         TextFrame = ttk.Frame(OutputWindow)
