@@ -1,849 +1,2411 @@
+# -*- coding: utf-8 -*-
+"""
+ICBM: Escalation Unit Code Generator
+单位代码生成器 - 主程序文件
+"""
+
 import tkinter as tk
 from tkinter import ttk
 from tkinter import messagebox
+from tkinter import filedialog
 import json
+import csv
+import os
 
-# =============================================================================
-# 1. 通用组件类 (Reusable Components)
-# =============================================================================
+# ============================================================================
+# 多语言支持模块
+# ============================================================================
 
-class EditableTable(ttk.Frame):
-    """
-    通用的可编辑表格组件。
-    包含：一个 Treeview，滚动条，以及添加/删除/清空按钮。
-    """
-    def __init__(self, parent, columns, column_widths=None, height=8):
-        super().__init__(parent)
+class LanguageManager:
+    """多语言管理器"""
+    
+    def __init__(self):
+        self.CurrentLanguage = "zh_CN"
+        self.Translations = {}
+        self.LoadLanguageFiles()
+    
+    def LoadLanguageFiles(self):
+        """加载语言文件"""
+        LanguageDir = os.path.join(os.path.dirname(__file__), "Languages")
+        if not os.path.exists(LanguageDir):
+            os.makedirs(LanguageDir)
+            self.CreateDefaultLanguageFiles(LanguageDir)
         
-        # 1. 创建表格区域
-        self.tree_frame = ttk.Frame(self)
-        self.tree_frame.pack(side='top', fill='both', expand=True)
-        
-        # 滚动条
-        self.scrollbar = ttk.Scrollbar(self.tree_frame)
-        self.scrollbar.pack(side='right', fill='y')
-        
-        # 表格
-        self.tree = ttk.Treeview(
-            self.tree_frame, 
-            columns=columns, 
-            show='headings', 
-            height=height,
-            yscrollcommand=self.scrollbar.set
-        )
-        self.scrollbar.config(command=self.tree.yview)
-        
-        # 设置列头和宽度
-        for i, col in enumerate(columns):
-            self.tree.heading(col, text=col)
-            if column_widths and i < len(column_widths):
-                self.tree.column(col, width=column_widths[i])
-            else:
-                self.tree.column(col, width=100) # 默认宽度
-                
-        self.tree.pack(side='left', fill='both', expand=True)
-        
-        # 2. 创建输入区域 (由子类或外部调用者填充)
-        self.input_frame = ttk.Frame(self)
-        self.input_frame.pack(side='top', fill='x', pady=5)
-        
-        # 3. 创建按钮区域
-        self.btn_frame = ttk.Frame(self)
-        self.btn_frame.pack(side='bottom', fill='x', pady=5)
-        
-        # 默认按钮
-        ttk.Button(self.btn_frame, text="添加", command=self.add_item).pack(side='left', padx=5)
-        ttk.Button(self.btn_frame, text="删除选中", command=self.delete_selected).pack(side='left', padx=5)
-        ttk.Button(self.btn_frame, text="清空", command=self.clear_all).pack(side='left', padx=5)
-
-        # 用于存储输入框控件的列表，方便获取数据
-        self.input_entries = []
-
-    def add_input_field(self, label_text, width=15, widget_type="entry", values=None):
-        """辅助函数：在输入区域添加一个标签和输入框"""
-        frame = ttk.Frame(self.input_frame)
-        frame.pack(side='left', padx=5)
-        ttk.Label(frame, text=label_text).pack(side='left')
-        
-        if widget_type == "combobox":
-            entry = ttk.Combobox(frame, values=values, width=width)
-        else:
-            entry = ttk.Entry(frame, width=width)
-            
-        entry.pack(side='left', padx=2)
-        self.input_entries.append(entry)
-        return entry
-
-    def get_input_values(self):
-        """获取所有输入框的当前值"""
-        return [entry.get().strip() for entry in self.input_entries]
-
-    def clear_inputs(self):
-        """清空所有输入框"""
-        for entry in self.input_entries:
-            entry.delete(0, tk.END)
-
-    def add_item(self):
-        """默认的添加逻辑：读取输入框并添加到表格"""
-        values = self.get_input_values()
-        if values and values[0]:
-            self.tree.insert("", tk.END, values=values)
-            self.clear_inputs()
-        else:
-            messagebox.showwarning("提示", "请至少填写第一项内容")
-
-    def delete_selected(self):
-        """删除选中行"""
-        selected = self.tree.selection()
-        if not selected:
-            return
-        for item in selected:
-            self.tree.delete(item)
-
-    def clear_all(self):
-        """清空表格"""
-        for item in self.tree.get_children():
-            self.tree.delete(item)
-            
-    def get_all_data(self):
-        """获取表格中所有行的数据"""
-        data = []
-        for item in self.tree.get_children():
-            data.append(self.tree.item(item)['values'])
-        return data
-
-# =============================================================================
-# 2. 标签页模块 (Tab Modules)
-# =============================================================================
-
-class BasicInfoTab(ttk.Frame):
-    """基础信息标签页 (仅包含常用字段)"""
-    def __init__(self, parent):
-        super().__init__(parent)
-        self.columnconfigure(0, weight=1)
-        self.columnconfigure(1, weight=1)
-        
-        # --- 左侧：基础数据 ---
-        self.info_frame = ttk.LabelFrame(self, text="基础数据")
-        self.info_frame.grid(row=0, column=0, sticky="nsew", padx=5, pady=5)
-        
-        self.vars = {}
-        
-        # 字段定义 (Label, VariableName) - 仅保留 grid.py 原有字段
-        fields = [
-            ("单位名称 (ID):", "unit_name"),
-            ("科技引用 (Tech):", "tech"),
-            ("单位类型 (Type):", "type"),
-            ("单位类别 (Class):", "class"),
-            ("生命值 (Power):", "power"),
-            ("移动速度 (Speed):", "speed"),
-            ("转向速度 (TurnSpeed):", "turn_speed"),
-            ("最大航程 (Range):", "range"),
-            ("受击体积 (Size):", "size"),
-            ("生产成本 (ProductionCost):", "cost"),
-            ("自毁时间 (SelfDestructTime):", "self_destruct"),
-            ("自动修复 (AutoRepair):", "auto_repair"),
-            ("补给范围 (ResupplyRange):", "resupply_range"),
-            ("自动交战范围 (MaxAutoEngageRange):", "auto_engage_range"),
-            ("跟随半径 (FollowRadius):", "follow_radius"),
-            ("占领半径 (OccupationRadius):", "occupation_radius"),
-            ("最小高度 (MinElevation):", "min_elevation"),
-            ("最大高度 (MaxElevation):", "max_elevation"),
-            ("放置半径 (ProductionPlacementRadius):", "placement_radius"),
-            ("绘制顺序 (DrawOrder):", "draw_order"),
-            ("最大地图数量 (MaxNumberOnMap):", "max_on_map"),
-            ("最大订购数量 (MaxNumberToOrder):", "max_to_order"),
-            ("容量需求 (HangarSpaceRequired):", "hangar_required"),
-            ("最大载重 (HangarMaxLoad):", "hangar_load"),
-            ("爆炸效果 (Crash):", "crash")
-        ]
-        
-        for i, (label, var_name) in enumerate(fields):
-            ttk.Label(self.info_frame, text=label).grid(row=i, column=0, sticky="w", padx=5, pady=2)
-            var = tk.StringVar()
-            self.vars[var_name] = var
-            
-            if var_name == "type":
-                ttk.Combobox(self.info_frame, textvariable=var, values=["Ground", "Airborne", "Naval", "Subwater", "Satellite"]).grid(row=i, column=1, sticky="ew", padx=5, pady=2)
-            else:
-                ttk.Entry(self.info_frame, textvariable=var).grid(row=i, column=1, sticky="ew", padx=5, pady=2)
-
-        # --- 右侧：图形与自定义 ---
-        self.right_frame = ttk.Frame(self)
-        self.right_frame.grid(row=0, column=1, sticky="nsew", padx=5, pady=5)
-        
-        # 图形设置
-        self.gfx_frame = ttk.LabelFrame(self.right_frame, text="图形与音效")
-        self.gfx_frame.pack(fill="x", pady=5)
-        
-        gfx_fields = [
-            ("俯视图 (Movie):", "movie"),
-            ("缩略图 (AbstractMovie):", "abstract_movie"),
-            ("3D模型 (Model):", "model"),
-            ("图标 (Icon):", "icon"),
-            ("圆形图标 (RoundIcon):", "round_icon"),
-            ("发射图标路径 (LaunchMePathIcon):", "launch_icon_path"),
-            ("图标索引 (IconIDX):", "icon_idx"),
-            ("绘制大小 (DrawSize):", "draw_size"),
-            ("缩略图大小 (AbstractDrawSize):", "abstract_draw_size"),
-            ("模型大小 (ModelDrawSize):", "model_draw_size"),
-            ("音效 (Sound):", "sound"),
-            ("发射音效 (LaunchMeSound):", "launch_sound")
-        ]
-        
-        for i, (label, var_name) in enumerate(gfx_fields):
-            ttk.Label(self.gfx_frame, text=label).grid(row=i, column=0, sticky="w", padx=5, pady=2)
-            var = tk.StringVar()
-            self.vars[var_name] = var
-            ttk.Entry(self.gfx_frame, textvariable=var).grid(row=i, column=1, sticky="ew", padx=5, pady=2)
-
-        # 自定义参数表格
-        self.custom_frame = ttk.LabelFrame(self.right_frame, text="自定义参数")
-        self.custom_frame.pack(fill="both", expand=True, pady=5)
-        
-        self.custom_table = EditableTable(self.custom_frame, columns=["参数名", "参数值"], column_widths=[150, 150])
-        self.custom_table.pack(fill="both", expand=True, padx=5, pady=5)
-        self.custom_table.add_input_field("参数名:")
-        self.custom_table.add_input_field("参数值:")
-
-    def get_data(self):
-        data = {k: v.get() for k, v in self.vars.items()}
-        data['custom_params'] = self.custom_table.get_all_data()
-        return data
-
-
-class AdvancedInfoTab(ttk.Frame):
-    """高级信息标签页 (Escalation 新增或不常用字段)"""
-    def __init__(self, parent):
-        super().__init__(parent)
-        
-        self.main_frame = ttk.Frame(self)
-        self.main_frame.pack(fill='both', expand=True, padx=10, pady=10)
-        
-        self.vars = {}
-        
-        fields = [
-            ("继承自 (COPY):", "copy_from"),
-            ("禁用科技 (DisablingTech):", "disabling_tech"),
-            ("虚拟速度 (VirtualSpeed):", "virtual_speed"),
-            ("传感器激活延迟 (SensorsActivationDelay):", "sensor_delay"),
-            ("武器激活延迟 (WeaponsActivationDelay):", "weapon_delay"),
-            ("部署延迟 (OnDeployLaunchHostedDelay):", "deploy_delay"),
-            ("攻击延迟 (AttackDelay):", "attack_delay"),
-            ("衰减计时器 (DecayTimer):", "decay_timer"),
-            ("销毁消息 (DestructionMessage):", "destruction_msg")
-        ]
-        
-        for i, (label, var_name) in enumerate(fields):
-            ttk.Label(self.main_frame, text=label).grid(row=i, column=0, sticky="w", padx=5, pady=5)
-            var = tk.StringVar()
-            self.vars[var_name] = var
-            ttk.Entry(self.main_frame, textvariable=var, width=40).grid(row=i, column=1, sticky="w", padx=5, pady=5)
-
-    def get_data(self):
-        return {k: v.get() for k, v in self.vars.items()}
-
-
-class BehaviorTab(ttk.Frame):
-    """行为控制标签页"""
-    def __init__(self, parent):
-        super().__init__(parent)
-        
-        self.behavior_frame = ttk.LabelFrame(self, text="行为标记 (Boolean Flags)")
-        self.behavior_frame.pack(fill='both', expand=True, padx=10, pady=10)
-        
-        # 定义复选框配置 (显示文本, 内部键名)
-        self.checkbox_configs = [
-            ("在敌方领土可见 (AlwaysVisibleOnEnemyTerritory)", "AlwaysVisibleOnEnemyTerritory"),
-            ("受击不触发战争 (DoesNotTriggerWarWhenAttacked)", "DoesNotTriggerWarWhenAttacked"),
-            ("攻击不触发战争 (DoesNotTriggerWarOnAttack)", "DoesNotTriggerWarOnAttack"),
-            ("和平时期可跨越边界 (CanCrossBorderDuringPeaceTime)", "CanCrossBorderDuringPeaceTime"),
-            ("可跨越边界 (CanCrossBorder)", "CanCrossBorder"),
-            ("显示被装载于母单位 (ReportAsHosted)", "ReportAsHosted"),
-            ("在被攻击名单中 (TargetInPlanner)", "TargetInPlanner"),
-            ("在攻击者名单中 (AttackerInPlanner)", "AttackerInPlanner"),
-            ("可访问全局武库 (CanAccessGlobalStorage)", "CanAccessGlobalStorage"),
-            ("可访问本地武库 (CanAccessWeaponStockpile)", "CanAccessWeaponStockpile"),
-            ("可访问单位武库 (CanAccessUnitStockpile)", "CanAccessUnitStockpile"),
-            ("可悬停 (CanHangInTheAir)", "CanHangInTheAir"),
-            ("隐藏所有者阵营 (HideOwnership)", "HideOwnership"),
-            ("可设置巡逻点 (CanPatrolPoint)", "CanPatrolPoint"),
-            ("自动返回母单位 (AutoReturn)", "AutoReturn"),
-            ("由其他单位生产 (ProducedByAnotherUnit)", "ProducedByAnotherUnit"),
-            ("固定朝向 (FixedRotationAngle)", "FixedRotationAngle"),
-            ("移动时可攻击 (AttackOnMove)", "AttackOnMove"),
-            ("部署时显示禁用 (ShowDisabledOnDeploymentMarker)", "ShowDisabledOnDeploymentMarker"),
-            ("投降后自动摧毁 (DestroyOnFactionSurrender)", "DestroyOnFactionSurrender"),
-            ("对盟友隐藏 (HiddenFromAllies)", "HiddenFromAllies"),
-            ("被摧毁时反击 (AttackIfDestroyed)", "AttackIfDestroyed"),
-            ("不自动攻击 (NoAutoAttack)", "NoAutoAttack"),
-            ("不自动攻击潜艇 (NoAutoAttackSub)", "NoAutoAttackSub"),
-            ("附属于母单位 (Slave)", "Slave"),
-            ("不自动部署 (NoAutoDeploy)", "NoAutoDeploy"),
-            ("特殊状态 (SpecialState)", "SpecialState"),
-            ("被围困时执行命令 (ExecuteOrdersWhenBesieged)", "ExecuteOrdersWhenBesieged"),
-            ("战争计划中移动到目标 (MoveToTargetInWarPlan)", "MoveToTargetInWarPlan"),
-            ("强制 MipMap (ForceMipMap)", "ForceMipMap"),
-            ("隐藏缩略图 (HideAbstract)", "HideAbstract")
-        ]
-        
-        self.vars = {}
-        
-        # 自动生成复选框，分3列显示
-        for i, (text, key) in enumerate(self.checkbox_configs):
-            var = tk.BooleanVar()
-            self.vars[key] = var
-            col = i % 3
-            row = i // 3
-            ttk.Checkbutton(self.behavior_frame, text=text, variable=var).grid(row=row, column=col, sticky="w", padx=10, pady=5)
-
-    def get_data(self):
-        return {k: v.get() for k, v in self.vars.items()}
-
-
-class StateTab(ttk.Frame):
-    """状态切换标签页 (HighState/LowState)"""
-    def __init__(self, parent):
-        super().__init__(parent)
-        
-        self.main_frame = ttk.Frame(self)
-        self.main_frame.pack(fill='both', expand=True, padx=10, pady=10)
-        
-        self.vars = {}
-        
-        # 状态定义
-        fields = [
-            ("高状态单位 (HighState):", "HighState"),
-            ("低状态单位 (LowState):", "LowState"),
-            ("切换到高状态时间 (TimeToHighState):", "TimeToHighState"),
-            ("切换到低状态时间 (TimeToLowState):", "TimeToLowState"),
-            ("高状态文本索引 (HighStateStringIDX):", "HighStateStringIDX"),
-            ("低状态文本索引 (LowStateStringIDX):", "LowStateStringIDX"),
-            ("状态文本索引 (StateStringIDX):", "StateStringIDX"),
-            ("状态图标 (StateIcon):", "StateIcon"),
-            ("切换高状态图标 (ToHighStateIcon):", "ToHighStateIcon"),
-            ("切换低状态图标 (ToLowStateIcon):", "ToLowStateIcon"),
-            ("切换高状态过程文本 (ToHighStateProcessStringIDX):", "ToHighStateProcessStringIDX"),
-            ("切换低状态过程文本 (ToLowStateProcessStringIDX):", "ToLowStateProcessStringIDX"),
-            ("自动休息延迟 (AutoOnRestDelay):", "AutoOnRestDelay")
-        ]
-        
-        for i, (label, key) in enumerate(fields):
-            ttk.Label(self.main_frame, text=label).grid(row=i, column=0, sticky="w", padx=5, pady=2)
-            var = tk.StringVar()
-            self.vars[key] = var
-            ttk.Entry(self.main_frame, textvariable=var, width=40).grid(row=i, column=1, sticky="w", padx=5, pady=2)
-            
-        # 自动切换规则 (Combobox)
-        shift_rules = [
-            ("撤退切换 (RetreatShift):", "RetreatShift"),
-            ("攻击切换 (AttackShift):", "AttackShift"),
-            ("防御切换 (DefenceShift):", "DefenceShift"),
-            ("快速移动切换 (FastMoveShift):", "FastMoveShift"),
-            ("冰下切换 (UnderIceShift):", "UnderIceShift"),
-            ("移动切换 (AutoOnMoveShift):", "AutoOnMoveShift"),
-            ("休息切换 (AutoOnRest):", "AutoOnRest")
-        ]
-        
-        shift_options = ["", "High", "Low", "None"]
-        
-        for i, (label, key) in enumerate(shift_rules):
-            row = i + len(fields)
-            ttk.Label(self.main_frame, text=label).grid(row=row, column=0, sticky="w", padx=5, pady=2)
-            var = tk.StringVar()
-            self.vars[key] = var
-            ttk.Combobox(self.main_frame, textvariable=var, values=shift_options, width=37).grid(row=row, column=1, sticky="w", padx=5, pady=2)
-
-    def get_data(self):
-        return {k: v.get() for k, v in self.vars.items()}
-
-
-class SubUnitTab(ttk.Frame):
-    """子单位与生产标签页"""
-    def __init__(self, parent):
-        super().__init__(parent)
-        
-        self.notebook = ttk.Notebook(self)
-        self.notebook.pack(fill='both', expand=True, padx=5, pady=5)
-        
-        # 1. 生产单位 (Produces)
-        self.produces_frame = ttk.Frame(self.notebook)
-        self.notebook.add(self.produces_frame, text="生产单位 (Produces)")
-        self.produces_table = EditableTable(self.produces_frame, columns=["单位名称"])
-        self.produces_table.pack(fill='both', expand=True)
-        self.produces_table.add_input_field("单位名称:")
-        
-        # 2. 搭载单位 (CanCarryUnit)
-        self.carry_frame = ttk.Frame(self.notebook)
-        self.notebook.add(self.carry_frame, text="搭载单位 (CanCarryUnit)")
-        self.carry_table = EditableTable(self.carry_frame, columns=["单位名称", "构建(Build)"])
-        self.carry_table.pack(fill='both', expand=True)
-        self.carry_table.add_input_field("单位名称:")
-        self.carry_table.add_input_field("Build (可选):")
-        
-        # 3. 托管飞机 (CanHostAircrafts)
-        self.host_frame = ttk.Frame(self.notebook)
-        self.notebook.add(self.host_frame, text="托管飞机 (CanHostAircrafts)")
-        self.host_table = EditableTable(self.host_frame, columns=["航线ID", "单位名称", "数量", "巡逻数", "自动巡逻"], column_widths=[50, 150, 50, 50, 80])
-        self.host_table.pack(fill='both', expand=True)
-        self.host_table.add_input_field("航线ID (可选):", width=5)
-        self.host_table.add_input_field("单位名称:")
-        self.host_table.add_input_field("数量:", width=5)
-        self.host_table.add_input_field("巡逻数:", width=5)
-        self.host_table.add_input_field("自动巡逻 (AIAutoPatrol):", width=10, widget_type="combobox", values=["", "AIAutoPatrol"])
-        
-        # 4. 航线配置 (Airway)
-        self.airway_frame = ttk.Frame(self.notebook)
-        self.notebook.add(self.airway_frame, text="航线配置 (Airway)")
-        self.airway_table = EditableTable(self.airway_frame, columns=["发射数 (Launch)", "间隔时间 (Time)"])
-        self.airway_table.pack(fill='both', expand=True)
-        self.airway_table.add_input_field("发射数:")
-        self.airway_table.add_input_field("间隔时间:")
-
-    def get_data(self):
-        return {
-            "produces": self.produces_table.get_all_data(),
-            "can_carry": self.carry_table.get_all_data(),
-            "can_host": self.host_table.get_all_data(),
-            "airway": self.airway_table.get_all_data()
-        }
-
-
-class WeaponTab(ttk.Frame):
-    """
-    武器配置标签页 (复杂逻辑)
-    结构：左侧 Config 树，右侧 Weapon 列表
-    """
-    def __init__(self, parent):
-        super().__init__(parent)
-        
-        self.paned = ttk.PanedWindow(self, orient=tk.HORIZONTAL)
-        self.paned.pack(fill='both', expand=True, padx=5, pady=5)
-        
-        # --- 左侧：配置树 (Config / ImprovedBy) ---
-        self.left_frame = ttk.LabelFrame(self.paned, text="配置结构 (Config Tree)")
-        self.paned.add(self.left_frame, weight=1)
-        
-        self.tree = ttk.Treeview(self.left_frame, show="tree")
-        self.tree.pack(side='left', fill='both', expand=True)
-        self.tree_scroll = ttk.Scrollbar(self.left_frame, orient="vertical", command=self.tree.yview)
-        self.tree_scroll.pack(side='right', fill='y')
-        self.tree.configure(yscrollcommand=self.tree_scroll.set)
-        
-        # 树操作按钮
-        self.tree_btn_frame = ttk.Frame(self.left_frame)
-        self.tree_btn_frame.pack(side='bottom', fill='x')
-        ttk.Button(self.tree_btn_frame, text="添加 Config", command=self.add_config).pack(side='left', padx=2)
-        ttk.Button(self.tree_btn_frame, text="添加 ImprovedBy", command=self.add_improved_by).pack(side='left', padx=2)
-        ttk.Button(self.tree_btn_frame, text="删除节点", command=self.delete_node).pack(side='left', padx=2)
-        
-        # --- 右侧：武器列表 ---
-        self.right_frame = ttk.LabelFrame(self.paned, text="武器列表 (Weapons)")
-        self.paned.add(self.right_frame, weight=2)
-        
-        self.weapon_table = EditableTable(
-            self.right_frame, 
-            columns=["武器类型", "备弹", "发射数", "时间", "自动接敌", "主武器", "默认关闭"],
-            column_widths=[120, 50, 50, 50, 60, 50, 60]
-        )
-        self.weapon_table.pack(fill='both', expand=True)
-        
-        # 武器输入
-        self.weapon_table.add_input_field("类型:")
-        self.weapon_table.add_input_field("备弹:", width=5)
-        self.weapon_table.add_input_field("发射数:", width=5)
-        self.weapon_table.add_input_field("时间:", width=5)
-        self.weapon_table.add_input_field("自动:", width=5, widget_type="combobox", values=["", "AutoEngage"])
-        self.weapon_table.add_input_field("主武器:", width=5, widget_type="combobox", values=["", "Principal"])
-        self.weapon_table.add_input_field("默认关:", width=5, widget_type="combobox", values=["", "DefaultOff"])
-        
-        # 绑定事件：点击树节点加载对应的武器数据
-        self.tree.bind("<<TreeviewSelect>>", self.on_tree_select)
-        
-        # 数据存储：NodeID -> WeaponList
-        self.node_weapons = {}
-        
-        # 覆盖 add_item 以保存到字典
-        self.original_add_item = self.weapon_table.add_item
-        self.weapon_table.add_item = self.add_weapon_wrapper
-        
-        # 覆盖 delete_selected 以更新字典
-        self.original_delete_selected = self.weapon_table.delete_selected
-        self.weapon_table.delete_selected = self.delete_weapon_wrapper
-
-    def add_config(self):
-        name = tk.simpledialog.askstring("输入", "Config 名称:")
-        if name:
-            # 询问额外属性
-            attrs = []
-            if messagebox.askyesno("选项", "是否为默认配置 (Default)?"): attrs.append("Default")
-            if messagebox.askyesno("选项", "是否仅满载 (OnlyFull)?"): attrs.append("OnlyFull")
-            
-            text = f"Config \"{name}\" {' '.join(attrs)}"
-            node_id = self.tree.insert("", "end", text=text, values=("Config", name, attrs))
-            self.node_weapons[node_id] = []
-
-    def add_improved_by(self):
-        selected = self.tree.selection()
-        if not selected:
-            messagebox.showwarning("提示", "请先选择一个父节点 (Config 或 ImprovedBy)")
-            return
-        
-        parent_id = selected[0]
-        name = tk.simpledialog.askstring("输入", "ImprovedBy 科技名称:")
-        if name:
-            text = f"ImprovedBy \"{name}\""
-            node_id = self.tree.insert(parent_id, "end", text=text, values=("ImprovedBy", name))
-            self.node_weapons[node_id] = []
-            self.tree.item(parent_id, open=True)
-
-    def delete_node(self):
-        selected = self.tree.selection()
-        if selected:
-            node_id = selected[0]
-            self.tree.delete(node_id)
-            if node_id in self.node_weapons:
-                del self.node_weapons[node_id]
-
-    def on_tree_select(self, event):
-        # 保存当前表格数据到上一个选中的节点 (如果需要实时保存，这里简化为切换时刷新)
-        # 实际上，因为我们直接操作了 self.node_weapons，所以只需要刷新显示
-        selected = self.tree.selection()
-        if not selected:
-            return
-        
-        node_id = selected[0]
-        self.refresh_weapon_table(node_id)
-
-    def refresh_weapon_table(self, node_id):
-        self.weapon_table.clear_all()
-        weapons = self.node_weapons.get(node_id, [])
-        for w in weapons:
-            self.weapon_table.tree.insert("", "end", values=w)
-
-    def add_weapon_wrapper(self):
-        selected = self.tree.selection()
-        if not selected:
-            messagebox.showwarning("提示", "请先在左侧选择一个配置节点")
-            return
-        
-        node_id = selected[0]
-        values = self.weapon_table.get_input_values()
-        if values and values[0]:
-            self.node_weapons[node_id].append(values)
-            self.refresh_weapon_table(node_id)
-            self.weapon_table.clear_inputs()
-
-    def delete_weapon_wrapper(self):
-        selected_node = self.tree.selection()
-        if not selected_node: return
-        
-        node_id = selected_node[0]
-        selected_items = self.weapon_table.tree.selection()
-        
-        # 从后往前删，防止索引偏移
-        for item in reversed(selected_items):
-            idx = self.weapon_table.tree.index(item)
-            if idx < len(self.node_weapons[node_id]):
-                self.node_weapons[node_id].pop(idx)
-        
-        self.refresh_weapon_table(node_id)
-
-    def get_data(self):
-        # 递归构建数据结构
-        def get_node_data(item_id):
-            item = self.tree.item(item_id)
-            data = {
-                "text": item['text'],
-                "type": item['values'][0] if item['values'] else "",
-                "weapons": self.node_weapons.get(item_id, []),
-                "children": []
-            }
-            for child_id in self.tree.get_children(item_id):
-                data["children"].append(get_node_data(child_id))
-            return data
-
-        roots = []
-        for child_id in self.tree.get_children(""):
-            roots.append(get_node_data(child_id))
-        return roots
-
-
-class RadarModifierTab(ttk.Frame):
-    """雷达与修改器标签页"""
-    def __init__(self, parent):
-        super().__init__(parent)
-        
-        self.columnconfigure(0, weight=1)
-        self.columnconfigure(1, weight=1)
-        
-        # 雷达
-        self.radar_frame = ttk.LabelFrame(self, text="雷达配置 (Radar)")
-        self.radar_frame.grid(row=0, column=0, sticky="nsew", padx=5, pady=5)
-        self.radar_table = EditableTable(self.radar_frame, columns=["雷达类型", "默认关闭"])
-        self.radar_table.pack(fill='both', expand=True)
-        self.radar_table.add_input_field("雷达类型:")
-        self.radar_table.add_input_field("默认关闭:", widget_type="combobox", values=["", "DefaultOff"])
-        
-        # 修改器
-        self.mod_frame = ttk.LabelFrame(self, text="修改器 (Modifier)")
-        self.mod_frame.grid(row=0, column=1, sticky="nsew", padx=5, pady=5)
-        self.mod_table = EditableTable(self.mod_frame, columns=["修改器名称", "数值 (可选)"])
-        self.mod_table.pack(fill='both', expand=True)
-        self.mod_table.add_input_field("修改器名称:")
-        self.mod_table.add_input_field("数值:")
-
-    def get_data(self):
-        return {
-            "radars": self.radar_table.get_all_data(),
-            "modifiers": self.mod_table.get_all_data()
-        }
-
-
-class UpgradeTab(ttk.Frame):
-    """升级项标签页 (ImprovedBy)"""
-    def __init__(self, parent):
-        super().__init__(parent)
-        
-        self.upgrade_table = EditableTable(self, columns=["科技名称", "属性", "值/操作"], column_widths=[150, 150, 150])
-        self.upgrade_table.pack(fill='both', expand=True, padx=5, pady=5)
-        
-        self.upgrade_table.add_input_field("科技名称:")
-        self.upgrade_table.add_input_field("属性 (如 Speed):")
-        self.upgrade_table.add_input_field("值 (如 1.1 或 Set Speed 50):", width=30)
-
-    def get_data(self):
-        return self.upgrade_table.get_all_data()
-
-
-# =============================================================================
-# 3. 代码生成器 (Code Generator)
-# =============================================================================
-
-class CodeGenerator:
-    @staticmethod
-    def generate(app):
-        lines = []
-        
-        # 1. 基础信息
-        basic = app.tab_basic.get_data()
-        advanced = app.tab_advanced.get_data()
-        
-        unit_name = basic.get('unit_name', 'NewUnit')
-        copy_from = advanced.get('copy_from', '')
-        
-        if copy_from:
-            lines.append(f'[UNIT] "{unit_name}" COPY "{copy_from}"')
-        else:
-            lines.append(f'[UNIT] "{unit_name}"')
-            
-        # 基础字段映射
-        simple_fields = {
-            'tech': 'Tech', 'type': 'Type', 'class': 'Class',
-            'power': 'Power', 'speed': 'Speed', 
-            'turn_speed': 'TurnSpeed', 'range': 'Range', 'size': 'Size',
-            'cost': 'ProductionCost', 'self_destruct': 'SelfDestructTime',
-            'auto_repair': 'AutoRepair', 'resupply_range': 'ResupplyRange',
-            'auto_engage_range': 'MaxAutoEngageRange', 'follow_radius': 'FollowRadius',
-            'occupation_radius': 'OccupationRadius', 'min_elevation': 'MinElevation',
-            'max_elevation': 'MaxElevation', 'placement_radius': 'ProductionPlacementRadius',
-            'draw_order': 'DrawOrder', 'max_on_map': 'MaxNumberOnMap',
-            'max_to_order': 'MaxNumberToOrder', 'hangar_required': 'HangarSpaceRequired',
-            'hangar_load': 'HangarMaxLoad', 'crash': 'Crash',
-            'movie': 'Movie', 'abstract_movie': 'AbstractMovie', 'model': 'Model',
-            'icon': 'Icon', 'round_icon': 'RoundIcon', 'launch_icon_path': 'LaunchMePathIcon',
-            'icon_idx': 'IconIDX', 'draw_size': 'DrawSize', 'abstract_draw_size': 'AbstractDrawSize',
-            'model_draw_size': 'ModelDrawSize', 'sound': 'Sound', 'launch_sound': 'LaunchMeSound'
+        for FileName in os.listdir(LanguageDir):
+            if FileName.endswith(".json"):
+                LangCode = FileName.replace(".json", "")
+                FilePath = os.path.join(LanguageDir, FileName)
+                try:
+                    with open(FilePath, "r", encoding="utf-8") as f:
+                        self.Translations[LangCode] = json.load(f)
+                except Exception as e:
+                    print(f"加载语言文件失败: {FileName}, 错误: {e}")
+    
+    def CreateDefaultLanguageFiles(self, LanguageDir):
+        """创建默认语言文件"""
+        # 中文语言文件
+        ZhCN = {
+            "AppTitle": "ICBM: Escalation 单位代码生成器",
+            "Tab_BasicInfo": "基本信息",
+            "Tab_Behavior": "行为控制",
+            "Tab_SubUnit": "子单位/生产",
+            "Tab_Weapon": "武器配置",
+            "Tab_RadarModifier": "雷达/修改器",
+            "Tab_StateSwitch": "状态切换",
+            "Tab_Upgrade": "升级项",
+            "Group_BasicData": "基础数据",
+            "Group_PropertyData": "属性数据",
+            "Group_CustomParams": "自定义参数",
+            "Label_GlobalName": "全局名称:",
+            "Label_Tech": "科技引用:",
+            "Label_Type": "单位类型:",
+            "Label_Class": "单位分组:",
+            "Label_Movie": "俯视图路径:",
+            "Label_AbstractMovie": "缩略图路径:",
+            "Label_Model": "3D模型路径:",
+            "Label_Icon": "图标路径:",
+            "Label_RoundIcon": "圆形图标:",
+            "Label_IconIDX": "图标索引:",
+            "Label_DrawSize": "绘制大小:",
+            "Label_AbstractDrawSize": "缩略绘制:",
+            "Label_ModelDrawSize": "模型尺寸:",
+            "Label_Sound": "音效编码:",
+            "Label_LaunchMeSound": "发射音效:",
+            "Label_LaunchMePathIcon": "发射图标:",
+            "Label_DrawOrder": "绘制顺序:",
+            "Label_Crash": "爆炸效果:",
+            "Label_Power": "生命值:",
+            "Label_Size": "受击体积:",
+            "Label_Speed": "移动速度:",
+            "Label_TurnSpeed": "转向速度:",
+            "Label_Range": "航程:",
+            "Label_ProductionCost": "生产成本:",
+            "Label_SelfDestruct": "自毁时间:",
+            "Label_MaxElevation": "最大高度:",
+            "Label_MinElevation": "最小高度:",
+            "Label_ResupplyRadius": "补给半径:",
+            "Label_FollowRadius": "跟随半径:",
+            "Label_OccupationRadius": "占领半径:",
+            "Label_AutoRepair": "自动修理:",
+            "Label_MaxAutoEngageRange": "自动攻击:",
+            "Label_ProductionPlacementRadius": "放置半径:",
+            "Label_MaxNumberOnMap": "地图最大:",
+            "Label_MaxNumberToOrder": "持有最大:",
+            "Label_TimeToOccupyMult": "占领时间:",
+            "Label_DecayTimer": "衰减时间:",
+            "Label_HangarSpaceRequired": "容量需求:",
+            "Label_HangarMaxLoad": "最大容量:",
+            "Btn_Add": "+",
+            "Btn_Delete": "-",
+            "Btn_Load": "读取选中项",
+            "Btn_Save": "保存至选中项",
+            "Btn_MoveUp": "↑",
+            "Btn_MoveDown": "↓",
+            "Btn_Clear": "清除",
+            "Btn_Default": "默认",
+            "Btn_Generate": "生成",
+            "Btn_Import": "导入",
+            "Btn_Export": "导出",
+            "Col_Parameter": "参数",
+            "Col_Value": "值",
+            "Col_Unit": "单位",
+            "Col_Count": "数量",
+            "Col_Airway": "航线",
+            "Col_PatrolCount": "巡逻数",
+            "Col_AutoPatrol": "自巡逻",
+            "Msg_ConfirmClear": "确定要清除所有数据吗？此操作不可撤销。",
+            "Msg_ConfirmDefault": "确定要填充默认值吗？这将覆盖当前数据。",
+            "Msg_RequiredFields": "请确保所有必填字段已填写！",
+            "Msg_Success": "操作成功",
+            "Msg_Error": "错误",
+            "Msg_Warning": "警告"
         }
         
-        # 高级字段映射
-        advanced_fields = {
-            'disabling_tech': 'DisablingTech', 'virtual_speed': 'VirtualSpeed',
-            'sensor_delay': 'SensorsActivationDelay', 'weapon_delay': 'WeaponsActivationDelay',
-            'deploy_delay': 'OnDeployLaunchHostedDelay', 'attack_delay': 'AttackDelay',
-            'decay_timer': 'DecayTimer', 'destruction_msg': 'DestructionMessage'
+        # 英文语言文件
+        EnUS = {
+            "AppTitle": "ICBM: Escalation Unit Code Generator",
+            "Tab_BasicInfo": "Basic Info",
+            "Tab_Behavior": "Behavior",
+            "Tab_SubUnit": "SubUnit/Production",
+            "Tab_Weapon": "Weapon Config",
+            "Tab_RadarModifier": "Radar/Modifier",
+            "Tab_StateSwitch": "State Switch",
+            "Tab_Upgrade": "Upgrades",
+            "Group_BasicData": "Basic Data",
+            "Group_PropertyData": "Property Data",
+            "Group_CustomParams": "Custom Parameters",
+            "Label_GlobalName": "Global Name:",
+            "Label_Tech": "Tech Reference:",
+            "Label_Type": "Unit Type:",
+            "Label_Class": "Unit Class:",
+            "Label_Movie": "Topdown Path:",
+            "Label_AbstractMovie": "Abstract Path:",
+            "Label_Model": "3D Model Path:",
+            "Label_Icon": "Icon Path:",
+            "Label_RoundIcon": "Round Icon:",
+            "Label_IconIDX": "Icon Index:",
+            "Label_DrawSize": "Draw Size:",
+            "Label_AbstractDrawSize": "Abstract Size:",
+            "Label_ModelDrawSize": "Model Size:",
+            "Label_Sound": "Sound Code:",
+            "Label_LaunchMeSound": "Launch Sound:",
+            "Label_LaunchMePathIcon": "Launch Icon:",
+            "Label_DrawOrder": "Draw Order:",
+            "Label_Crash": "Crash Effect:",
+            "Label_Power": "Power:",
+            "Label_Size": "Size:",
+            "Label_Speed": "Speed:",
+            "Label_TurnSpeed": "Turn Speed:",
+            "Label_Range": "Range:",
+            "Label_ProductionCost": "Production Cost:",
+            "Label_SelfDestruct": "Self Destruct:",
+            "Label_MaxElevation": "Max Elevation:",
+            "Label_MinElevation": "Min Elevation:",
+            "Label_ResupplyRadius": "Resupply Radius:",
+            "Label_FollowRadius": "Follow Radius:",
+            "Label_OccupationRadius": "Occupation Radius:",
+            "Label_AutoRepair": "Auto Repair:",
+            "Label_MaxAutoEngageRange": "Auto Engage:",
+            "Label_ProductionPlacementRadius": "Placement Radius:",
+            "Label_MaxNumberOnMap": "Max On Map:",
+            "Label_MaxNumberToOrder": "Max To Order:",
+            "Label_TimeToOccupyMult": "Occupy Time:",
+            "Label_DecayTimer": "Decay Timer:",
+            "Label_HangarSpaceRequired": "Hangar Required:",
+            "Label_HangarMaxLoad": "Hangar Max:",
+            "Btn_Add": "+",
+            "Btn_Delete": "-",
+            "Btn_Load": "Load Selected",
+            "Btn_Save": "Save to Selected",
+            "Btn_MoveUp": "↑",
+            "Btn_MoveDown": "↓",
+            "Btn_Clear": "Clear",
+            "Btn_Default": "Default",
+            "Btn_Generate": "Generate",
+            "Btn_Import": "Import",
+            "Btn_Export": "Export",
+            "Col_Parameter": "Parameter",
+            "Col_Value": "Value",
+            "Col_Unit": "Unit",
+            "Col_Count": "Count",
+            "Col_Airway": "Airway",
+            "Col_PatrolCount": "Patrol",
+            "Col_AutoPatrol": "AutoPatrol",
+            "Msg_ConfirmClear": "Are you sure you want to clear all data? This cannot be undone.",
+            "Msg_ConfirmDefault": "Are you sure you want to fill default values? This will overwrite current data.",
+            "Msg_RequiredFields": "Please ensure all required fields are filled!",
+            "Msg_Success": "Success",
+            "Msg_Error": "Error",
+            "Msg_Warning": "Warning"
         }
         
-        # 处理基础字段
-        for key, label in simple_fields.items():
-            val = basic.get(key)
-            if val:
-                if key == 'sound' and ',' in val:
-                    parts = val.split(',')
-                    lines.append(f"  {label} {parts[0].strip()} Volume {parts[1].strip()}")
-                elif key == 'launch_icon_path':
-                     lines.append(f"  {label} element \"{val}\"")
-                elif key in ['movie', 'abstract_movie', 'model', 'icon', 'round_icon', 'tech', 'class', 'crash']:
-                    lines.append(f"  {label} \"{val}\"")
-                else:
-                    lines.append(f"  {label} {val}")
-
-        # 处理高级字段
-        for key, label in advanced_fields.items():
-            val = advanced.get(key)
-            if val:
-                if key in ['disabling_tech', 'destruction_msg']:
-                    lines.append(f"  {label} \"{val}\"")
-                else:
-                    lines.append(f"  {label} {val}")
-
-        # 自定义参数
-        for row in basic['custom_params']:
-            lines.append(f"  {row[0]} {row[1]}")
-
-        # 2. 行为标记
-        behavior = app.tab_behavior.get_data()
-        for key, val in behavior.items():
-            if val:
-                lines.append(f"  {key} Yes")
-
-        # 3. 状态切换
-        state = app.tab_state.get_data()
-        for key, val in state.items():
-            if val:
-                if "Icon" in key:
-                    lines.append(f"  {key} \"{val}\"")
-                else:
-                    lines.append(f"  {key} {val}")
-
-        # 4. 子单位
-        sub = app.tab_sub.get_data()
-        for row in sub['produces']:
-            lines.append(f"  Produces \"{row[0]}\"")
-        for row in sub['can_carry']:
-            val = f"  CanCarryUnit \"{row[0]}\""
-            if len(row) > 1 and row[1]: val += f" {row[1]}"
-            lines.append(val)
-        for row in sub['airway']:
-            lines.append(f"  Airway Launch {row[0]} Time {row[1]}")
-        for row in sub['can_host']:
-            line = "  CanHostAircrafts"
-            if row[0]: line += f" airway {row[0]}"
-            line += f" \"{row[1]}\" {row[2]}"
-            if row[3]: line += f" Patrol {row[3]}"
-            if row[4]: line += f" {row[4]}"
-            lines.append(line)
-
-        # 5. 雷达与修改器
-        rm = app.tab_radar.get_data()
-        for row in rm['radars']:
-            line = f"  Radar \"{row[0]}\""
-            if len(row) > 1 and row[1]: line += f" {row[1]}"
-            lines.append(line)
-        for row in rm['modifiers']:
-            line = f"  Modifier \"{row[0]}\""
-            if len(row) > 1 and row[1]: line += f" {row[1]}"
-            lines.append(line)
-
-        # 6. 升级项
-        upgrades = app.tab_upgrade.get_data()
-        for row in upgrades:
-            lines.append(f"  ImprovedBy \"{row[0]}\" {row[1]} {row[2]}")
-
-        # 7. 武器配置
-        weapon_roots = app.tab_weapon.get_data()
+        # 保存语言文件
+        with open(os.path.join(LanguageDir, "zh_CN.json"), "w", encoding="utf-8") as f:
+            json.dump(ZhCN, f, ensure_ascii=False, indent=4)
+        with open(os.path.join(LanguageDir, "en_US.json"), "w", encoding="utf-8") as f:
+            json.dump(EnUS, f, ensure_ascii=False, indent=4)
         
-        def write_node(node, indent_level=1):
-            indent = "  " * indent_level
-            lines.append(f"{indent}{node['text']}")
-            
-            for w in node['weapons']:
-                w_line = f"{indent}  Weapon \"{w[0]}\""
-                if w[1]: w_line += f" {w[1]}"
-                if w[2]: w_line += f" Launch {w[2]}"
-                if w[3]: w_line += f" Time {w[3]}"
-                if w[4]: w_line += f" {w[4]}"
-                if w[5]: w_line += f" {w[5]}"
-                if w[6]: w_line += f" {w[6]}"
-                lines.append(w_line)
-            
-            if node['children']:
-                lines.append(f"{indent}{{")
-                for child in node['children']:
-                    write_node(child, indent_level + 1)
-                lines.append(f"{indent}}}")
-
-        for root in weapon_roots:
-            write_node(root)
-
-        return "\n".join(lines)
+        self.Translations["zh_CN"] = ZhCN
+        self.Translations["en_US"] = EnUS
+    
+    def Get(self, Key):
+        """获取翻译文本"""
+        if self.CurrentLanguage in self.Translations:
+            return self.Translations[self.CurrentLanguage].get(Key, Key)
+        return Key
+    
+    def SetLanguage(self, LangCode):
+        """设置当前语言"""
+        if LangCode in self.Translations:
+            self.CurrentLanguage = LangCode
+            return True
+        return False
+    
+    def GetAvailableLanguages(self):
+        """获取可用语言列表"""
+        return list(self.Translations.keys())
 
 
-# =============================================================================
-# 4. 主程序类 (Main Application)
-# =============================================================================
+# ============================================================================
+# 数据库管理模块
+# ============================================================================
 
-class UnitGeneratorApp:
-    def __init__(self, root):
-        self.root = root
-        self.root.title("ICBM Escalation Unit Generator (NewCode)")
-        self.root.geometry("1200x800")
+class DatabaseManager:
+    """数据库管理器 - 用于自动补全"""
+    
+    def __init__(self):
+        self.DatabaseDir = os.path.join(os.path.dirname(__file__), "Database")
+        self.Data = {
+            "Types": [],
+            "Classes": [],
+            "Units": [],
+            "Techs": [],
+            "Weapons": [],
+            "Radars": [],
+            "Modifiers": [],
+            "Crashes": []
+        }
+        self.LoadDatabases()
+    
+    def LoadDatabases(self):
+        """加载所有数据库文件"""
+        if not os.path.exists(self.DatabaseDir):
+            os.makedirs(self.DatabaseDir)
+            self.CreateDefaultDatabases()
         
-        # 菜单栏
-        menubar = tk.Menu(root)
-        file_menu = tk.Menu(menubar, tearoff=0)
-        file_menu.add_command(label="生成代码", command=self.generate_code)
-        file_menu.add_command(label="退出", command=root.quit)
-        menubar.add_cascade(label="文件", menu=file_menu)
-        root.config(menu=menubar)
+        for Category in self.Data.keys():
+            FilePath = os.path.join(self.DatabaseDir, f"{Category}.csv")
+            if os.path.exists(FilePath):
+                try:
+                    with open(FilePath, "r", encoding="utf-8") as f:
+                        Reader = csv.reader(f)
+                        for Row in Reader:
+                            self.Data[Category] = Row
+                            break  # 只读取第一行
+                except Exception as e:
+                    print(f"加载数据库失败: {Category}.csv, 错误: {e}")
+    
+    def CreateDefaultDatabases(self):
+        """创建默认数据库文件"""
+        DefaultData = {
+            "Types": ["Ground", "Airborne", "Naval", "Subwater", "Satellite"],
+            "Classes": ["UC_Ground", "UC_Airborne", "UC_Naval", "UC_Subwater", "UC_Satellite"],
+            "Units": ["Infantry", "Tank", "Aircraft", "Ship", "Submarine"],
+            "Techs": ["U_Infantry", "U_Tank", "U_Aircraft", "U_Ship", "U_Submarine"],
+            "Weapons": ["HMG", "Cannon", "Missile", "Torpedo", "Bomb"],
+            "Radars": ["Standard_Radar", "Advanced_Radar", "Spy_Camera"],
+            "Modifiers": ["EMP_Killable", "EMP_Defence_Mod_1", "Stealth_Mod"],
+            "Crashes": ["std_bomb", "big_bomb", "small_bomb"]
+        }
         
-        # 主容器
-        self.notebook = ttk.Notebook(root)
-        self.notebook.pack(fill='both', expand=True, padx=5, pady=5)
+        for Category, Values in DefaultData.items():
+            FilePath = os.path.join(self.DatabaseDir, f"{Category}.csv")
+            with open(FilePath, "w", encoding="utf-8", newline="") as f:
+                Writer = csv.writer(f)
+                Writer.writerow(Values)
+            self.Data[Category] = Values
+    
+    def Get(self, Category):
+        """获取指定类别的数据列表"""
+        return self.Data.get(Category, [])
+    
+    def Add(self, Category, Value):
+        """添加数据到指定类别"""
+        if Category in self.Data and Value not in self.Data[Category]:
+            self.Data[Category].append(Value)
+            self.SaveCategory(Category)
+    
+    def SaveCategory(self, Category):
+        """保存指定类别的数据"""
+        FilePath = os.path.join(self.DatabaseDir, f"{Category}.csv")
+        with open(FilePath, "w", encoding="utf-8", newline="") as f:
+            Writer = csv.writer(f)
+            Writer.writerow(self.Data[Category])
+
+
+# ============================================================================
+# 主应用程序类
+# ============================================================================
+
+class UnitCodeGeneratorApp:
+    """单位代码生成器主应用"""
+    
+    def __init__(self):
+        self.Root = tk.Tk()
+        self.Lang = LanguageManager()
+        self.DB = DatabaseManager()
         
-        # 初始化标签页
-        self.tab_basic = BasicInfoTab(self.notebook)
-        self.tab_advanced = AdvancedInfoTab(self.notebook)
-        self.tab_behavior = BehaviorTab(self.notebook)
-        self.tab_state = StateTab(self.notebook)
-        self.tab_sub = SubUnitTab(self.notebook)
-        self.tab_weapon = WeaponTab(self.notebook)
-        self.tab_radar = RadarModifierTab(self.notebook)
-        self.tab_upgrade = UpgradeTab(self.notebook)
+        # 数据存储
+        self.BasicInfoVars = {}
+        self.BehaviorVars = {}
+        self.CustomParamsData = []
         
-        # 添加到 Notebook
-        self.notebook.add(self.tab_basic, text="基础信息")
-        self.notebook.add(self.tab_advanced, text="高级信息")
-        self.notebook.add(self.tab_behavior, text="行为控制")
-        self.notebook.add(self.tab_state, text="状态切换")
-        self.notebook.add(self.tab_sub, text="子单位/生产")
-        self.notebook.add(self.tab_weapon, text="武器配置")
-        self.notebook.add(self.tab_radar, text="雷达/修改器")
-        self.notebook.add(self.tab_upgrade, text="升级项")
+        self.SetupWindow()
+        self.CreateWidgets()
+    
+    def SetupWindow(self):
+        """设置主窗口"""
+        self.Root.title(self.Lang.Get("AppTitle"))
+        
+        # 获取屏幕尺寸并居中显示
+        ScreenWidth = self.Root.winfo_screenwidth()
+        ScreenHeight = self.Root.winfo_screenheight()
+        WindowWidth = 1024
+        WindowHeight = 768
+        X = (ScreenWidth - WindowWidth) // 2
+        Y = (ScreenHeight - WindowHeight) // 2
+        
+        self.Root.geometry(f"{WindowWidth}x{WindowHeight}+{X}+{Y}")
+        self.Root.resizable(False, False)
+    
+    def CreateWidgets(self):
+        """创建所有控件"""
+        # 主框架
+        self.MainFrame = ttk.Frame(self.Root)
+        self.MainFrame.pack(fill="both", expand=True, padx=10, pady=5)
+        
+        # 顶部工具栏
+        self.CreateToolbar()
+        
+        # 标签页
+        self.Notebook = ttk.Notebook(self.MainFrame)
+        self.Notebook.pack(fill="both", expand=True)
+        
+        # 创建各个标签页
+        self.CreateBasicInfoTab()
+        self.CreateBehaviorTab()
+        self.CreateSubUnitTab()
+        self.CreateWeaponTab()
+        self.CreateRadarModifierTab()
+        self.CreateStateSwitchTab()
+        self.CreateUpgradeTab()
         
         # 底部按钮
-        btn_frame = ttk.Frame(root)
-        btn_frame.pack(side='bottom', fill='x', padx=10, pady=10)
-        ttk.Button(btn_frame, text="生成代码", command=self.generate_code).pack(side='right')
-
-    def generate_code(self):
-        code = CodeGenerator.generate(self)
+        self.CreateBottomButtons()
+    
+    def CreateToolbar(self):
+        """创建工具栏"""
+        ToolbarFrame = ttk.Frame(self.MainFrame)
+        ToolbarFrame.pack(fill="x", pady=(0, 5))
+        
+        # 语言选择
+        ttk.Label(ToolbarFrame, text="Language:").pack(side="left", padx=(0, 5))
+        self.LanguageCombo = ttk.Combobox(
+            ToolbarFrame, 
+            values=self.Lang.GetAvailableLanguages(),
+            width=10,
+            state="readonly"
+        )
+        self.LanguageCombo.set(self.Lang.CurrentLanguage)
+        self.LanguageCombo.pack(side="left", padx=(0, 10))
+        self.LanguageCombo.bind("<<ComboboxSelected>>", self.OnLanguageChange)
+        
+        # 导入导出按钮
+        ttk.Button(ToolbarFrame, text=self.Lang.Get("Btn_Import"), 
+                   command=self.ImportConfig).pack(side="right", padx=2)
+        ttk.Button(ToolbarFrame, text=self.Lang.Get("Btn_Export"), 
+                   command=self.ExportConfig).pack(side="right", padx=2)
+    
+    def OnLanguageChange(self, Event=None):
+        """语言切换事件"""
+        NewLang = self.LanguageCombo.get()
+        self.Lang.SetLanguage(NewLang)
+        # 保存语言设置到文件
+        self.SaveLanguageSettings()
+        # 更新界面文本
+        self.UpdateUI()
+        messagebox.showinfo(
+            self.Lang.Get("Msg_Success"),
+            "Language changed successfully!"
+        )
+    
+    def SaveLanguageSettings(self):
+        """保存语言设置"""
+        try:
+            with open("language_config.json", "w", encoding="utf-8") as f:
+                json.dump({"language": self.Lang.CurrentLanguage}, f)
+        except Exception as e:
+            print(f"保存语言设置失败: {e}")
+    
+    def LoadLanguageSettings(self):
+        """加载语言设置"""
+        try:
+            if os.path.exists("language_config.json"):
+                with open("language_config.json", "r", encoding="utf-8") as f:
+                    config = json.load(f)
+                    lang = config.get("language", "zh_CN")
+                    if self.Lang.SetLanguage(lang):
+                        self.LanguageCombo.set(lang)
+        except Exception as e:
+            print(f"加载语言设置失败: {e}")
+    
+    def UpdateUI(self):
+        """更新界面文本（无需重启）"""
+        # 更新窗口标题
+        self.Root.title(self.Lang.Get("AppTitle"))
+        
+        # 更新标签页标题
+        if hasattr(self, 'Notebook') and self.Notebook is not None:
+            # 重新创建标签页标题（复杂操作，暂时跳过）
+            pass
+        
+        # 更新按钮文本
+        # 这里可以添加更多文本更新逻辑
+        pass
+    
+    def CreateBasicInfoTab(self):
+        """创建基本信息标签页"""
+        Frame = ttk.Frame(self.Notebook)
+        self.Notebook.add(Frame, text=self.Lang.Get("Tab_BasicInfo"))
+        
+        Frame.columnconfigure(0, weight=1)
+        Frame.columnconfigure(1, weight=1)
+        Frame.rowconfigure(0, weight=1)
+        Frame.rowconfigure(1, weight=1)
+        
+        # 基础数据组
+        self.CreateBasicDataGroup(Frame)
+        
+        # 属性数据组
+        self.CreatePropertyDataGroup(Frame)
+        
+        # 自定义参数组
+        self.CreateCustomParamsGroup(Frame)
+    
+    def CreateBasicDataGroup(self, ParentFrame):
+        """创建基础数据组"""
+        GroupFrame = ttk.LabelFrame(ParentFrame, text=self.Lang.Get("Group_BasicData"))
+        GroupFrame.grid(row=0, column=0, columnspan=2, padx=10, pady=5, sticky="nsew")
+        
+        # 第一列字段
+        Col1Fields = [
+            ("GlobalName", "Label_GlobalName", "entry", None),
+            ("Tech", "Label_Tech", "combo", "Techs"),
+            ("Movie", "Label_Movie", "entry", None),
+            ("AbstractMovie", "Label_AbstractMovie", "entry", None),
+            ("Model", "Label_Model", "entry", None),
+            ("Icon", "Label_Icon", "entry", None),
+            ("RoundIcon", "Label_RoundIcon", "entry", None),
+            ("LaunchMePathIcon", "Label_LaunchMePathIcon", "entry", None)
+        ]
+        
+        for i, (Key, LabelKey, WidgetType, DbKey) in enumerate(Col1Fields):
+            ttk.Label(GroupFrame, text=self.Lang.Get(LabelKey)).grid(
+                row=i, column=0, padx=10, pady=5, sticky="w"
+            )
+            Var = tk.StringVar()
+            self.BasicInfoVars[Key] = Var
+            
+            if WidgetType == "combo" and DbKey:
+                Widget = ttk.Combobox(GroupFrame, textvariable=Var, 
+                                      values=self.DB.Get(DbKey), width=25)
+            else:
+                Widget = ttk.Entry(GroupFrame, textvariable=Var, width=60)
+            Widget.grid(row=i, column=1, padx=10, pady=5, sticky="w")
+        
+        # 第二列字段
+        Col2Fields = [
+            ("Type", "Label_Type", "combo", "Types"),
+            ("Crash", "Label_Crash", "combo", "Crashes"),
+            ("Class", "Label_Class", "combo", "Classes"),
+            ("DrawSize", "Label_DrawSize", "entry", None),
+            ("AbstractDrawSize", "Label_AbstractDrawSize", "entry", None),
+            ("Sound", "Label_Sound", "entry", None),
+            ("LaunchMeSound", "Label_LaunchMeSound", "entry", None),
+            ("IconIDX", "Label_IconIDX", "entry", None)
+        ]
+        
+        for i, (Key, LabelKey, WidgetType, DbKey) in enumerate(Col2Fields):
+            ttk.Label(GroupFrame, text=self.Lang.Get(LabelKey)).grid(
+                row=i, column=2, padx=10, pady=5, sticky="w"
+            )
+            Var = tk.StringVar()
+            self.BasicInfoVars[Key] = Var
+            
+            if WidgetType == "combo" and DbKey:
+                Widget = ttk.Combobox(GroupFrame, textvariable=Var, 
+                                      values=self.DB.Get(DbKey), width=18)
+            else:
+                Widget = ttk.Entry(GroupFrame, textvariable=Var, width=20)
+            Widget.grid(row=i, column=3, padx=10, pady=5, sticky="w")
+    
+    def CreatePropertyDataGroup(self, ParentFrame):
+        """创建属性数据组"""
+        GroupFrame = ttk.LabelFrame(ParentFrame, text=self.Lang.Get("Group_PropertyData"))
+        GroupFrame.grid(row=1, column=0, padx=10, pady=5, sticky="nsew")
+        
+        # 属性字段 - 第一列
+        Col1Fields = [
+            ("Power", "Label_Power"),
+            ("TurnSpeed", "Label_TurnSpeed"),
+            ("Speed", "Label_Speed"),
+            ("Range", "Label_Range"),
+            ("Size", "Label_Size"),
+            ("ProductionCost", "Label_ProductionCost"),
+            ("SelfDestruct", "Label_SelfDestruct"),
+            ("AutoRepair", "Label_AutoRepair"),
+            ("ResupplyRadius", "Label_ResupplyRadius"),
+            ("MaxAutoEngageRange", "Label_MaxAutoEngageRange")
+        ]
+        
+        for i, (Key, LabelKey) in enumerate(Col1Fields):
+            ttk.Label(GroupFrame, text=self.Lang.Get(LabelKey)).grid(
+                row=i, column=0, padx=10, pady=5, sticky="w"
+            )
+            Var = tk.StringVar()
+            self.BasicInfoVars[Key] = Var
+            Entry = ttk.Entry(GroupFrame, textvariable=Var, width=15)
+            Entry.grid(row=i, column=1, padx=10, pady=5)
+        
+        # 属性字段 - 第二列
+        Col2Fields = [
+            ("FollowRadius", "Label_FollowRadius"),
+            ("OccupationRadius", "Label_OccupationRadius"),
+            ("MaxElevation", "Label_MaxElevation"),
+            ("MinElevation", "Label_MinElevation"),
+            ("ProductionPlacementRadius", "Label_ProductionPlacementRadius"),
+            ("DrawOrder", "Label_DrawOrder"),
+            ("MaxNumberOnMap", "Label_MaxNumberOnMap"),
+            ("MaxNumberToOrder", "Label_MaxNumberToOrder"),
+            ("HangarSpaceRequired", "Label_HangarSpaceRequired"),
+            ("HangarMaxLoad", "Label_HangarMaxLoad")
+        ]
+        
+        for i, (Key, LabelKey) in enumerate(Col2Fields):
+            ttk.Label(GroupFrame, text=self.Lang.Get(LabelKey)).grid(
+                row=i, column=2, padx=10, pady=5, sticky="w"
+            )
+            Var = tk.StringVar()
+            self.BasicInfoVars[Key] = Var
+            Entry = ttk.Entry(GroupFrame, textvariable=Var, width=15)
+            Entry.grid(row=i, column=3, padx=10, pady=5)
+    
+    def CreateCustomParamsGroup(self, ParentFrame):
+        """创建自定义参数组"""
+        GroupFrame = ttk.LabelFrame(ParentFrame, text=self.Lang.Get("Group_CustomParams"))
+        GroupFrame.grid(row=1, column=1, padx=10, pady=5, sticky="nsew")
+        
+        # 输入框架
+        InputFrame = ttk.Frame(GroupFrame)
+        InputFrame.pack(fill="x", padx=5, pady=5)
+        
+        ttk.Label(InputFrame, text=self.Lang.Get("Col_Parameter") + ":").grid(
+            row=0, column=0, padx=5, pady=2, sticky="w"
+        )
+        self.CustomParamNameEntry = ttk.Entry(InputFrame, width=18)
+        self.CustomParamNameEntry.grid(row=1, column=0, padx=5, pady=2)
+        
+        ttk.Label(InputFrame, text=self.Lang.Get("Col_Value") + ":").grid(
+            row=0, column=1, padx=5, pady=2, sticky="w"
+        )
+        self.CustomParamValueEntry = ttk.Entry(InputFrame, width=18)
+        self.CustomParamValueEntry.grid(row=1, column=1, padx=5, pady=2)
+        
+        # 表格
+        TableFrame = ttk.Frame(GroupFrame)
+        TableFrame.pack(fill="both", expand=True, padx=5, pady=5)
+        
+        self.CustomParamsTable = ttk.Treeview(
+            TableFrame, 
+            columns=("Parameter", "Value"), 
+            show="headings", 
+            height=12
+        )
+        self.CustomParamsTable.heading("Parameter", text=self.Lang.Get("Col_Parameter"))
+        self.CustomParamsTable.heading("Value", text=self.Lang.Get("Col_Value"))
+        self.CustomParamsTable.column("Parameter", width=140)
+        self.CustomParamsTable.column("Value", width=140)
+        
+        Scrollbar = ttk.Scrollbar(TableFrame, orient="vertical", 
+                                   command=self.CustomParamsTable.yview)
+        self.CustomParamsTable.configure(yscrollcommand=Scrollbar.set)
+        
+        self.CustomParamsTable.pack(side="left", fill="both", expand=True)
+        Scrollbar.pack(side="right", fill="y")
+        
+        # 按钮框架
+        ButtonFrame = ttk.Frame(GroupFrame)
+        ButtonFrame.pack(fill="x", padx=5, pady=5)
+        
+        ttk.Button(ButtonFrame, text=self.Lang.Get("Btn_Add"), width=3,
+                   command=self.AddCustomParam).pack(side="left", padx=2)
+        ttk.Button(ButtonFrame, text=self.Lang.Get("Btn_Delete"), width=3,
+                   command=self.DeleteCustomParam).pack(side="left", padx=2)
+        ttk.Button(ButtonFrame, text=self.Lang.Get("Btn_Load"), width=10,
+                   command=self.LoadCustomParam).pack(side="left", padx=2)
+        ttk.Button(ButtonFrame, text=self.Lang.Get("Btn_Save"), width=12,
+                   command=self.SaveCustomParam).pack(side="left", padx=2)
+    
+    def AddCustomParam(self):
+        """添加自定义参数"""
+        Name = self.CustomParamNameEntry.get().strip()
+        Value = self.CustomParamValueEntry.get().strip()
+        if Name:
+            self.CustomParamsTable.insert("", tk.END, values=(Name, Value))
+            self.CustomParamNameEntry.delete(0, tk.END)
+            self.CustomParamValueEntry.delete(0, tk.END)
+    
+    def DeleteCustomParam(self):
+        """删除选中的自定义参数"""
+        Selected = self.CustomParamsTable.selection()
+        if Selected:
+            self.CustomParamsTable.delete(Selected[0])
+    
+    def LoadCustomParam(self):
+        """读取选中的自定义参数"""
+        Selected = self.CustomParamsTable.selection()
+        if Selected:
+            Values = self.CustomParamsTable.item(Selected[0], "values")
+            self.CustomParamNameEntry.delete(0, tk.END)
+            self.CustomParamValueEntry.delete(0, tk.END)
+            if Values:
+                self.CustomParamNameEntry.insert(0, Values[0])
+                if len(Values) > 1:
+                    self.CustomParamValueEntry.insert(0, Values[1])
+    
+    def SaveCustomParam(self):
+        """保存到选中的自定义参数"""
+        Selected = self.CustomParamsTable.selection()
+        Name = self.CustomParamNameEntry.get().strip()
+        Value = self.CustomParamValueEntry.get().strip()
+        
+        if not Selected:
+            self.AddCustomParam()
+        else:
+            self.CustomParamsTable.item(Selected[0], values=(Name, Value))
+            self.CustomParamNameEntry.delete(0, tk.END)
+            self.CustomParamValueEntry.delete(0, tk.END)
+    
+    def CreateBehaviorTab(self):
+        """创建行为控制标签页"""
+        Frame = ttk.Frame(self.Notebook)
+        self.Notebook.add(Frame, text=self.Lang.Get("Tab_Behavior"))
+        
+        Frame.columnconfigure(0, weight=1)
+        Frame.rowconfigure(0, weight=1)
+        
+        # 行为控制组
+        GroupFrame = ttk.LabelFrame(Frame, text="行为控制")
+        GroupFrame.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
+        
+        # 行为选项定义：(变量名, 显示文本, 代码键名, 类型, 隐藏规则)
+        # 类型: Boolean=输出Yes/No, Existed=勾选时只输出键名
+        # 隐藏规则: Normal=总是输出, HideWhenFalse=False时不输出
+        self.BehaviorOptions = [
+            ("AlwaysVisibleOnEnemyTerritory", "在敌方领土可见", "AlwaysVisibleOnEnemyTerritory", "Boolean", "Normal"),
+            ("DoesNotTriggerWarWhenAttacked", "受击不触发战争", "DoesNotTriggerWarWhenAttacked", "Boolean", "HideWhenFalse"),
+            ("CanCrossBorderDuringPeaceTime", "和平时期可跨越边界", "CanCrossBorderDuringPeaceTime", "Boolean", "Normal"),
+            ("CanCrossBorder", "可跨越边界", "CanCrossBorder", "Boolean", "Normal"),
+            ("DoesNotTriggerWarOnAttack", "攻击不触发战争", "DoesNotTriggerWarOnAttack", "Boolean", "HideWhenFalse"),
+            ("ReportAsHosted", "显示被装载于母单位", "ReportAsHosted", "Boolean", "HideWhenFalse"),
+            ("TargetInPlanner", "在被攻击名单中", "TargetInPlanner", "Boolean", "HideWhenFalse"),
+            ("AttackerInPlanner", "在攻击者名单中", "AttackerInPlanner", "Existed", "HideWhenFalse"),
+            ("CanAccessGlobalStorage", "可访问全局库存", "CanAccessGlobalStorage", "Boolean", "HideWhenFalse"),
+            ("CanAccessWeaponStockpile", "可访问武器库存", "CanAccessWeaponStockpile", "Boolean", "HideWhenFalse"),
+            ("CanAccessUnitStockpile", "可访问单位库存", "CanAccessUnitStockpile", "Boolean", "HideWhenFalse"),
+            ("CanHangInTheAir", "可悬停", "CanHangInTheAir", "Boolean", "HideWhenFalse"),
+            ("HideOwnership", "隐藏所有者阵营", "HideOwnership", "Boolean", "HideWhenFalse"),
+            ("CanPatrolPoint", "空中单位巡逻点", "CanPatrolPoint", "Boolean", "HideWhenFalse"),
+            ("AutoReturn", "自动返回母单位", "AutoReturn", "Boolean", "HideWhenFalse"),
+            ("ProducedByAnotherUnit", "由其他单位生产", "ProducedByAnotherUnit", "Boolean", "HideWhenFalse"),
+            ("FixedRotationAngle", "固定朝向", "FixedRotationAngle", "Boolean", "HideWhenFalse"),
+            ("AttackOnMove", "移动时可攻击", "AttackOnMove", "Boolean", "HideWhenFalse"),
+            ("ShowDisabledOnDeploymentMarker", "部署时显示禁用", "ShowDisabledOnDeploymentMarker", "Boolean", "HideWhenFalse"),
+            ("DestroyOnFactionSurrender", "投降后自动摧毁", "DestroyOnFactionSurrender", "Boolean", "HideWhenFalse"),
+            ("HiddenFromAllies", "对盟友隐藏", "HiddenFromAllies", "Existed", "HideWhenFalse"),
+            ("AttackIfDestroyed", "被摧毁时反击", "AttackIfDestroyed", "Existed", "HideWhenFalse"),
+            ("NoAutoAttack", "不自动攻击", "NoAutoAttack", "Existed", "HideWhenFalse"),
+            ("NoAutoAttackSub", "不自动攻击潜艇", "NoAutoAttackSub", "Existed", "HideWhenFalse"),
+            ("Slave", "附属于母单位", "Slave", "Boolean", "HideWhenFalse"),
+            ("NoAutoDeploy", "不自动部署", "NoAutoDeploy", "Boolean", "HideWhenFalse"),
+            ("ExecuteOrdersWhenBesieged", "被围困时执行命令", "ExecuteOrdersWhenBesieged", "Boolean", "HideWhenFalse"),
+            ("HideAbstract", "隐藏缩略图", "HideAbstract", "Boolean", "HideWhenFalse")
+        ]
+        
+        # 创建复选框
+        self.BehaviorVars = {}
+        ColCount = 3  # 每行显示3个
+        for i, (VarName, DisplayText, CodeKey, BType, HideRule) in enumerate(self.BehaviorOptions):
+            Row = i // ColCount
+            Col = i % ColCount
+            
+            Var = tk.BooleanVar()
+            self.BehaviorVars[VarName] = {
+                "Var": Var,
+                "CodeKey": CodeKey,
+                "Type": BType,
+                "HideRule": HideRule
+            }
+            
+            Checkbox = ttk.Checkbutton(GroupFrame, text=DisplayText, variable=Var)
+            Checkbox.grid(row=Row, column=Col, padx=15, pady=5, sticky="w")
+    
+    def CreateSubUnitTab(self):
+        """创建子单位/生产标签页"""
+        Frame = ttk.Frame(self.Notebook)
+        self.Notebook.add(Frame, text=self.Lang.Get("Tab_SubUnit"))
+        
+        Frame.columnconfigure(0, weight=1)
+        Frame.columnconfigure(1, weight=1)
+        Frame.columnconfigure(2, weight=2)
+        Frame.rowconfigure(0, weight=1)
+        Frame.rowconfigure(1, weight=1)
+        
+        # 生产单位表格
+        self.CreateProducesGroup(Frame)
+        # 可搭载单位表格
+        self.CreateCanCarryGroup(Frame)
+        # 航线表格
+        self.CreateAirwayGroup(Frame)
+        # 子单位表格
+        self.CreateCanHostAircraftsGroup(Frame)
+    
+    def CreateProducesGroup(self, ParentFrame):
+        """创建生产单位组"""
+        GroupFrame = ttk.LabelFrame(ParentFrame, text="允许生产的单位")
+        GroupFrame.grid(row=0, column=0, padx=5, pady=5, sticky="nsew")
+        
+        # 输入区
+        InputFrame = ttk.Frame(GroupFrame)
+        InputFrame.pack(fill="x", padx=5, pady=5)
+        ttk.Label(InputFrame, text="单位:").pack(side="left", padx=2)
+        self.ProducesEntry = ttk.Combobox(InputFrame, values=self.DB.Get("Units"), width=22)
+        self.ProducesEntry.pack(side="left", padx=2)
+        ttk.Button(InputFrame, text="+", width=3, 
+                   command=self.AddProduces).pack(side="left", padx=2)
+        ttk.Button(InputFrame, text="-", width=3,
+                   command=self.DeleteProduces).pack(side="left", padx=2)
+        
+        # 表格
+        TableFrame = ttk.Frame(GroupFrame)
+        TableFrame.pack(fill="both", expand=True, padx=5, pady=5)
+        self.ProducesTable = ttk.Treeview(TableFrame, columns=("Unit",), show="headings", height=8)
+        self.ProducesTable.heading("Unit", text="单位")
+        self.ProducesTable.column("Unit", width=200)
+        Scrollbar = ttk.Scrollbar(TableFrame, orient="vertical", command=self.ProducesTable.yview)
+        self.ProducesTable.configure(yscrollcommand=Scrollbar.set)
+        self.ProducesTable.pack(side="left", fill="both", expand=True)
+        Scrollbar.pack(side="right", fill="y")
+        
+        # 按钮
+        BtnFrame = ttk.Frame(GroupFrame)
+        BtnFrame.pack(fill="x", padx=5, pady=5)
+        ttk.Button(BtnFrame, text="读取", width=8, command=self.LoadProduces).pack(side="left", padx=2)
+        ttk.Button(BtnFrame, text="保存", width=8, command=self.SaveProduces).pack(side="left", padx=2)
+    
+    def AddProduces(self):
+        Value = self.ProducesEntry.get().strip()
+        if Value:
+            self.ProducesTable.insert("", tk.END, values=(Value,))
+            self.ProducesEntry.delete(0, tk.END)
+    
+    def DeleteProduces(self):
+        Selected = self.ProducesTable.selection()
+        if Selected:
+            self.ProducesTable.delete(Selected[0])
+    
+    def LoadProduces(self):
+        Selected = self.ProducesTable.selection()
+        if Selected:
+            Values = self.ProducesTable.item(Selected[0], "values")
+            self.ProducesEntry.delete(0, tk.END)
+            if Values:
+                self.ProducesEntry.insert(0, Values[0])
+    
+    def SaveProduces(self):
+        Selected = self.ProducesTable.selection()
+        Value = self.ProducesEntry.get().strip()
+        if not Selected:
+            self.AddProduces()
+        elif Value:
+            self.ProducesTable.item(Selected[0], values=(Value,))
+            self.ProducesEntry.delete(0, tk.END)
+    
+    def CreateCanCarryGroup(self, ParentFrame):
+        """创建可搭载单位组"""
+        GroupFrame = ttk.LabelFrame(ParentFrame, text="允许搭载的单位")
+        GroupFrame.grid(row=1, column=0, padx=5, pady=5, sticky="nsew")
+        
+        # 输入区
+        InputFrame = ttk.Frame(GroupFrame)
+        InputFrame.pack(fill="x", padx=5, pady=5)
+        ttk.Label(InputFrame, text="单位:").pack(side="left", padx=2)
+        self.CanCarryEntry = ttk.Combobox(InputFrame, values=self.DB.Get("Units"), width=22)
+        self.CanCarryEntry.pack(side="left", padx=2)
+        ttk.Button(InputFrame, text="+", width=3, command=self.AddCanCarry).pack(side="left", padx=2)
+        ttk.Button(InputFrame, text="-", width=3, command=self.DeleteCanCarry).pack(side="left", padx=2)
+        
+        # 表格
+        TableFrame = ttk.Frame(GroupFrame)
+        TableFrame.pack(fill="both", expand=True, padx=5, pady=5)
+        self.CanCarryTable = ttk.Treeview(TableFrame, columns=("Unit",), show="headings", height=8)
+        self.CanCarryTable.heading("Unit", text="单位")
+        self.CanCarryTable.column("Unit", width=200)
+        Scrollbar = ttk.Scrollbar(TableFrame, orient="vertical", command=self.CanCarryTable.yview)
+        self.CanCarryTable.configure(yscrollcommand=Scrollbar.set)
+        self.CanCarryTable.pack(side="left", fill="both", expand=True)
+        Scrollbar.pack(side="right", fill="y")
+        
+        BtnFrame = ttk.Frame(GroupFrame)
+        BtnFrame.pack(fill="x", padx=5, pady=5)
+        ttk.Button(BtnFrame, text="读取", width=8, command=self.LoadCanCarry).pack(side="left", padx=2)
+        ttk.Button(BtnFrame, text="保存", width=8, command=self.SaveCanCarry).pack(side="left", padx=2)
+    
+    def AddCanCarry(self):
+        Value = self.CanCarryEntry.get().strip()
+        if Value:
+            self.CanCarryTable.insert("", tk.END, values=(Value,))
+            self.CanCarryEntry.delete(0, tk.END)
+    
+    def DeleteCanCarry(self):
+        Selected = self.CanCarryTable.selection()
+        if Selected:
+            self.CanCarryTable.delete(Selected[0])
+    
+    def LoadCanCarry(self):
+        Selected = self.CanCarryTable.selection()
+        if Selected:
+            Values = self.CanCarryTable.item(Selected[0], "values")
+            self.CanCarryEntry.delete(0, tk.END)
+            if Values:
+                self.CanCarryEntry.insert(0, Values[0])
+    
+    def SaveCanCarry(self):
+        Selected = self.CanCarryTable.selection()
+        Value = self.CanCarryEntry.get().strip()
+        if not Selected:
+            self.AddCanCarry()
+        elif Value:
+            self.CanCarryTable.item(Selected[0], values=(Value,))
+            self.CanCarryEntry.delete(0, tk.END)
+    
+    def CreateAirwayGroup(self, ParentFrame):
+        """创建航线组"""
+        GroupFrame = ttk.LabelFrame(ParentFrame, text="航线配置")
+        GroupFrame.grid(row=0, column=1, rowspan=2, padx=5, pady=5, sticky="nsew")
+        
+        # 输入区
+        InputFrame = ttk.Frame(GroupFrame)
+        InputFrame.pack(fill="x", padx=5, pady=5)
+        ttk.Label(InputFrame, text="发射数:").grid(row=0, column=0, padx=2)
+        self.AirwayLaunchEntry = ttk.Entry(InputFrame, width=8)
+        self.AirwayLaunchEntry.grid(row=0, column=1, padx=2)
+        ttk.Label(InputFrame, text="间隔:").grid(row=1, column=0, padx=2)
+        self.AirwayTimeEntry = ttk.Entry(InputFrame, width=8)
+        self.AirwayTimeEntry.grid(row=1, column=1, padx=2)
+        ttk.Button(InputFrame, text="+", width=3, command=self.AddAirway).grid(row=0, column=2, padx=2)
+        ttk.Button(InputFrame, text="-", width=3, command=self.DeleteAirway).grid(row=1, column=2, padx=2)
+        
+        # 表格
+        TableFrame = ttk.Frame(GroupFrame)
+        TableFrame.pack(fill="both", expand=True, padx=5, pady=5)
+        self.AirwayTable = ttk.Treeview(TableFrame, columns=("Launch", "Time"), show="headings", height=18)
+        self.AirwayTable.heading("Launch", text="发射数")
+        self.AirwayTable.heading("Time", text="间隔")
+        self.AirwayTable.column("Launch", width=80)
+        self.AirwayTable.column("Time", width=80)
+        Scrollbar = ttk.Scrollbar(TableFrame, orient="vertical", command=self.AirwayTable.yview)
+        self.AirwayTable.configure(yscrollcommand=Scrollbar.set)
+        self.AirwayTable.pack(side="left", fill="both", expand=True)
+        Scrollbar.pack(side="right", fill="y")
+        
+        BtnFrame = ttk.Frame(GroupFrame)
+        BtnFrame.pack(fill="x", padx=5, pady=5)
+        ttk.Button(BtnFrame, text="读取", width=8, command=self.LoadAirway).pack(side="left", padx=2)
+        ttk.Button(BtnFrame, text="保存", width=8, command=self.SaveAirway).pack(side="left", padx=2)
+    
+    def AddAirway(self):
+        Launch = self.AirwayLaunchEntry.get().strip()
+        Time = self.AirwayTimeEntry.get().strip()
+        if Launch and Time:
+            self.AirwayTable.insert("", tk.END, values=(Launch, Time))
+            self.AirwayLaunchEntry.delete(0, tk.END)
+            self.AirwayTimeEntry.delete(0, tk.END)
+    
+    def DeleteAirway(self):
+        Selected = self.AirwayTable.selection()
+        if Selected:
+            self.AirwayTable.delete(Selected[0])
+    
+    def LoadAirway(self):
+        Selected = self.AirwayTable.selection()
+        if Selected:
+            Values = self.AirwayTable.item(Selected[0], "values")
+            self.AirwayLaunchEntry.delete(0, tk.END)
+            self.AirwayTimeEntry.delete(0, tk.END)
+            if Values:
+                self.AirwayLaunchEntry.insert(0, Values[0])
+                if len(Values) > 1:
+                    self.AirwayTimeEntry.insert(0, Values[1])
+    
+    def SaveAirway(self):
+        Selected = self.AirwayTable.selection()
+        Launch = self.AirwayLaunchEntry.get().strip()
+        Time = self.AirwayTimeEntry.get().strip()
+        if not Selected:
+            self.AddAirway()
+        elif Launch and Time:
+            self.AirwayTable.item(Selected[0], values=(Launch, Time))
+            self.AirwayLaunchEntry.delete(0, tk.END)
+            self.AirwayTimeEntry.delete(0, tk.END)
+    
+    def CreateCanHostAircraftsGroup(self, ParentFrame):
+        """创建子单位组"""
+        GroupFrame = ttk.LabelFrame(ParentFrame, text="子单位配置")
+        GroupFrame.grid(row=0, column=2, rowspan=2, padx=5, pady=5, sticky="nsew")
+        
+        # 输入区
+        InputFrame = ttk.Frame(GroupFrame)
+        InputFrame.pack(fill="x", padx=5, pady=5)
+        
+        ttk.Label(InputFrame, text="单位名称:").grid(row=0, column=0, padx=2, sticky="w")
+        self.HostUnitEntry = ttk.Combobox(InputFrame, values=self.DB.Get("Units"), width=17)
+        self.HostUnitEntry.grid(row=0, column=1, columnspan=2, padx=2)
+        
+        ttk.Label(InputFrame, text="数量:").grid(row=0, column=3, padx=2)
+        self.HostCountEntry = ttk.Entry(InputFrame, width=6)
+        self.HostCountEntry.grid(row=0, column=4, padx=2)
+        
+        ttk.Label(InputFrame, text="航线:").grid(row=1, column=0, padx=2, sticky="w")
+        self.HostAirwayEntry = ttk.Entry(InputFrame, width=6)
+        self.HostAirwayEntry.grid(row=1, column=1, padx=2)
+        
+        ttk.Label(InputFrame, text="巡逻:").grid(row=1, column=2, padx=2)
+        self.HostPatrolEntry = ttk.Entry(InputFrame, width=6)
+        self.HostPatrolEntry.grid(row=1, column=3, padx=2)
+        
+        self.HostAutoPatrolVar = tk.BooleanVar()
+        ttk.Checkbutton(InputFrame, text="自动巡逻", variable=self.HostAutoPatrolVar).grid(row=1, column=4, padx=2)
+        
+        BtnInputFrame = ttk.Frame(InputFrame)
+        BtnInputFrame.grid(row=0, column=5, rowspan=2, padx=5)
+        ttk.Button(BtnInputFrame, text="+", width=3, command=self.AddHostAircraft).pack(pady=2)
+        ttk.Button(BtnInputFrame, text="-", width=3, command=self.DeleteHostAircraft).pack(pady=2)
+        
+        # 表格
+        TableFrame = ttk.Frame(GroupFrame)
+        TableFrame.pack(fill="both", expand=True, padx=5, pady=5)
+        Columns = ("Unit", "Count", "Airway", "Patrol", "AutoPatrol")
+        self.HostTable = ttk.Treeview(TableFrame, columns=Columns, show="headings", height=16)
+        self.HostTable.heading("Unit", text="单位")
+        self.HostTable.heading("Count", text="数量")
+        self.HostTable.heading("Airway", text="航线")
+        self.HostTable.heading("Patrol", text="巡逻")
+        self.HostTable.heading("AutoPatrol", text="自巡逻")
+        self.HostTable.column("Unit", width=150)
+        self.HostTable.column("Count", width=50)
+        self.HostTable.column("Airway", width=50)
+        self.HostTable.column("Patrol", width=50)
+        self.HostTable.column("AutoPatrol", width=50)
+        Scrollbar = ttk.Scrollbar(TableFrame, orient="vertical", command=self.HostTable.yview)
+        self.HostTable.configure(yscrollcommand=Scrollbar.set)
+        self.HostTable.pack(side="left", fill="both", expand=True)
+        Scrollbar.pack(side="right", fill="y")
+        
+        BtnFrame = ttk.Frame(GroupFrame)
+        BtnFrame.pack(fill="x", padx=5, pady=5)
+        ttk.Button(BtnFrame, text="读取", width=8, command=self.LoadHostAircraft).pack(side="left", padx=2)
+        ttk.Button(BtnFrame, text="保存", width=8, command=self.SaveHostAircraft).pack(side="left", padx=2)
+    
+    def AddHostAircraft(self):
+        Unit = self.HostUnitEntry.get().strip()
+        Count = self.HostCountEntry.get().strip()
+        if Unit and Count:
+            Airway = self.HostAirwayEntry.get().strip()
+            Patrol = self.HostPatrolEntry.get().strip()
+            AutoPatrol = "√" if self.HostAutoPatrolVar.get() else ""
+            self.HostTable.insert("", tk.END, values=(Unit, Count, Airway, Patrol, AutoPatrol))
+            self.ClearHostInputs()
+    
+    def DeleteHostAircraft(self):
+        Selected = self.HostTable.selection()
+        if Selected:
+            self.HostTable.delete(Selected[0])
+    
+    def LoadHostAircraft(self):
+        Selected = self.HostTable.selection()
+        if Selected:
+            Values = self.HostTable.item(Selected[0], "values")
+            self.ClearHostInputs()
+            if Values:
+                self.HostUnitEntry.insert(0, Values[0] if len(Values) > 0 else "")
+                self.HostCountEntry.insert(0, Values[1] if len(Values) > 1 else "")
+                self.HostAirwayEntry.insert(0, Values[2] if len(Values) > 2 else "")
+                self.HostPatrolEntry.insert(0, Values[3] if len(Values) > 3 else "")
+                self.HostAutoPatrolVar.set(Values[4] == "√" if len(Values) > 4 else False)
+    
+    def SaveHostAircraft(self):
+        Selected = self.HostTable.selection()
+        Unit = self.HostUnitEntry.get().strip()
+        Count = self.HostCountEntry.get().strip()
+        if not Selected:
+            self.AddHostAircraft()
+        elif Unit and Count:
+            Airway = self.HostAirwayEntry.get().strip()
+            Patrol = self.HostPatrolEntry.get().strip()
+            AutoPatrol = "√" if self.HostAutoPatrolVar.get() else ""
+            self.HostTable.item(Selected[0], values=(Unit, Count, Airway, Patrol, AutoPatrol))
+            self.ClearHostInputs()
+    
+    def ClearHostInputs(self):
+        self.HostUnitEntry.delete(0, tk.END)
+        self.HostCountEntry.delete(0, tk.END)
+        self.HostAirwayEntry.delete(0, tk.END)
+        self.HostPatrolEntry.delete(0, tk.END)
+        self.HostAutoPatrolVar.set(False)
+    
+    def CreateWeaponTab(self):
+        """创建武器配置标签页"""
+        Frame = ttk.Frame(self.Notebook)
+        self.Notebook.add(Frame, text=self.Lang.Get("Tab_Weapon"))
+        
+        Frame.columnconfigure(0, weight=1)
+        Frame.columnconfigure(1, weight=1)
+        Frame.rowconfigure(0, weight=1)
+        Frame.rowconfigure(1, weight=1)
+        
+        # 左侧：武器配置表格
+        ConfigFrame = ttk.LabelFrame(Frame, text="武器配置")
+        ConfigFrame.grid(row=0, column=0, padx=5, pady=5, sticky="nsew")
+        
+        # 配置输入区
+        ConfigInputFrame = ttk.Frame(ConfigFrame)
+        ConfigInputFrame.pack(fill="x", padx=5, pady=5)
+        ttk.Label(ConfigInputFrame, text="配置名称:").pack(side="left", padx=2)
+        self.ConfigNameEntry = ttk.Entry(ConfigInputFrame, width=20)
+        self.ConfigNameEntry.pack(side="left", padx=2)
+        ttk.Button(ConfigInputFrame, text="+", width=3, command=self.AddConfig).pack(side="left", padx=2)
+        ttk.Button(ConfigInputFrame, text="-", width=3, command=self.DeleteConfig).pack(side="left", padx=2)
+        
+        # 配置表格
+        ConfigTableFrame = ttk.Frame(ConfigFrame)
+        ConfigTableFrame.pack(fill="both", expand=True, padx=5, pady=5)
+        self.ConfigTable = ttk.Treeview(ConfigTableFrame, columns=("Name", "Default", "OnlyFull"), show="headings", height=12)
+        self.ConfigTable.heading("Name", text="配置名称")
+        self.ConfigTable.heading("Default", text="Default")
+        self.ConfigTable.heading("OnlyFull", text="OnlyFull")
+        self.ConfigTable.column("Name", width=150)
+        self.ConfigTable.column("Default", width=60)
+        self.ConfigTable.column("OnlyFull", width=80)
+        ConfigScrollbar = ttk.Scrollbar(ConfigTableFrame, orient="vertical", command=self.ConfigTable.yview)
+        self.ConfigTable.configure(yscrollcommand=ConfigScrollbar.set)
+        self.ConfigTable.pack(side="left", fill="both", expand=True)
+        ConfigScrollbar.pack(side="right", fill="y")
+        self.ConfigTable.bind("<<TreeviewSelect>>", self.OnConfigSelect)
+        
+        # 初始化时添加"无配置"选项
+        self.ConfigTable.insert("", tk.END, values=("无配置", "", ""))
+        
+        # 配置按钮
+        ConfigBtnFrame = ttk.Frame(ConfigFrame)
+        ConfigBtnFrame.pack(fill="x", padx=5, pady=5)
+        ttk.Button(ConfigBtnFrame, text="读取", width=8, command=self.LoadConfig).pack(side="left", padx=2)
+        ttk.Button(ConfigBtnFrame, text="保存", width=8, command=self.SaveConfig).pack(side="left", padx=2)
+        
+        # 右侧：武器表格
+        WeaponFrame = ttk.LabelFrame(Frame, text="武器")
+        WeaponFrame.grid(row=0, column=1, padx=5, pady=5, sticky="nsew")
+        
+        # 武器输入区
+        WeaponInputFrame = ttk.Frame(WeaponFrame)
+        WeaponInputFrame.pack(fill="x", padx=5, pady=5)
+        
+        ttk.Label(WeaponInputFrame, text="名称:").grid(row=0, column=0, padx=2, sticky="w")
+        self.WeaponNameEntry = ttk.Combobox(WeaponInputFrame, values=self.DB.Get("Weapons"), width=15)
+        self.WeaponNameEntry.grid(row=0, column=1, padx=2)
+        
+        ttk.Label(WeaponInputFrame, text="数量:").grid(row=0, column=2, padx=2)
+        self.WeaponCountEntry = ttk.Entry(WeaponInputFrame, width=8)
+        self.WeaponCountEntry.grid(row=0, column=3, padx=2)
+        
+        ttk.Label(WeaponInputFrame, text="Launch:").grid(row=1, column=0, padx=2, sticky="w")
+        self.WeaponLaunchEntry = ttk.Entry(WeaponInputFrame, width=8)
+        self.WeaponLaunchEntry.grid(row=1, column=1, padx=2)
+        
+        ttk.Label(WeaponInputFrame, text="Time:").grid(row=1, column=2, padx=2)
+        self.WeaponTimeEntry = ttk.Entry(WeaponInputFrame, width=8)
+        self.WeaponTimeEntry.grid(row=1, column=3, padx=2)
+        
+        ttk.Button(WeaponInputFrame, text="+", width=3, command=self.AddWeapon).grid(row=0, column=4, padx=2)
+        ttk.Button(WeaponInputFrame, text="-", width=3, command=self.DeleteWeapon).grid(row=1, column=4, padx=2)
+        
+        # 武器选项
+        WeaponOptionsFrame = ttk.Frame(WeaponInputFrame)
+        WeaponOptionsFrame.grid(row=0, column=5, rowspan=2, padx=10)
+        
+        self.WeaponAutoEngageVar = tk.BooleanVar()
+        self.WeaponPrincipalVar = tk.BooleanVar()
+        self.WeaponDefaultOffVar = tk.BooleanVar()
+        
+        ttk.Checkbutton(WeaponOptionsFrame, text="AutoEngage", variable=self.WeaponAutoEngageVar).pack(anchor="w", pady=1)
+        ttk.Checkbutton(WeaponOptionsFrame, text="Principal", variable=self.WeaponPrincipalVar).pack(anchor="w", pady=1)
+        ttk.Checkbutton(WeaponOptionsFrame, text="DefaultOff", variable=self.WeaponDefaultOffVar).pack(anchor="w", pady=1)
+        
+        # 武器表格
+        WeaponTableFrame = ttk.Frame(WeaponFrame)
+        WeaponTableFrame.pack(fill="both", expand=True, padx=5, pady=5)
+        self.WeaponTable = ttk.Treeview(
+            WeaponTableFrame, 
+            columns=("Name", "Count", "Launch", "Time", "AutoEngage", "Principal", "DefaultOff"), 
+            show="headings", 
+            height=16
+        )
+        self.WeaponTable.heading("Name", text="名称")
+        self.WeaponTable.heading("Count", text="数量")
+        self.WeaponTable.heading("Launch", text="Launch")
+        self.WeaponTable.heading("Time", text="Time")
+        self.WeaponTable.heading("AutoEngage", text="AutoEngage")
+        self.WeaponTable.heading("Principal", text="Principal")
+        self.WeaponTable.heading("DefaultOff", text="DefaultOff")
+        self.WeaponTable.column("Name", width=120)
+        self.WeaponTable.column("Count", width=50)
+        self.WeaponTable.column("Launch", width=50)
+        self.WeaponTable.column("Time", width=50)
+        self.WeaponTable.column("AutoEngage", width=70)
+        self.WeaponTable.column("Principal", width=60)
+        self.WeaponTable.column("DefaultOff", width=70)
+        WeaponScrollbar = ttk.Scrollbar(WeaponTableFrame, orient="vertical", command=self.WeaponTable.yview)
+        self.WeaponTable.configure(yscrollcommand=WeaponScrollbar.set)
+        self.WeaponTable.pack(side="left", fill="both", expand=True)
+        WeaponScrollbar.pack(side="right", fill="y")
+        self.WeaponTable.bind("<<TreeviewSelect>>", self.OnWeaponSelect)
+        
+        # 武器按钮
+        WeaponBtnFrame = ttk.Frame(WeaponFrame)
+        WeaponBtnFrame.pack(fill="x", padx=5, pady=5)
+        ttk.Button(WeaponBtnFrame, text="↑", width=3, command=self.MoveWeaponUp).pack(side="left", padx=2)
+        ttk.Button(WeaponBtnFrame, text="↓", width=3, command=self.MoveWeaponDown).pack(side="left", padx=2)
+        ttk.Button(WeaponBtnFrame, text="读取", width=8, command=self.LoadWeapon).pack(side="left", padx=2)
+        ttk.Button(WeaponBtnFrame, text="保存", width=8, command=self.SaveWeapon).pack(side="left", padx=2)
+        
+        # 底部：配置-武器关联
+        AssociationFrame = ttk.LabelFrame(Frame, text="配置-武器关联")
+        AssociationFrame.grid(row=1, column=0, columnspan=2, padx=5, pady=5, sticky="nsew")
+        
+        # 关联输入区
+        AssocInputFrame = ttk.Frame(AssociationFrame)
+        AssocInputFrame.pack(fill="x", padx=5, pady=5)
+        
+        ttk.Label(AssocInputFrame, text="配置:").pack(side="left", padx=2)
+        self.AssocConfigCombo = ttk.Combobox(AssocInputFrame, values=[], width=20, state="readonly")
+        self.AssocConfigCombo.pack(side="left", padx=2)
+        
+        ttk.Label(AssocInputFrame, text="武器:").pack(side="left", padx=10)
+        self.AssocWeaponCombo = ttk.Combobox(AssocInputFrame, values=[], width=20, state="readonly")
+        self.AssocWeaponCombo.pack(side="left", padx=2)
+        
+        ttk.Button(AssocInputFrame, text="添加关联", command=self.AddWeaponConfigAssociation).pack(side="left", padx=10)
+        
+        # 关联表格
+        AssocTableFrame = ttk.Frame(AssociationFrame)
+        AssocTableFrame.pack(fill="both", expand=True, padx=5, pady=5)
+        self.WeaponConfigTable = ttk.Treeview(AssocTableFrame, columns=("Config", "Weapon"), show="headings", height=8)
+        self.WeaponConfigTable.heading("Config", text="配置")
+        self.WeaponConfigTable.heading("Weapon", text="武器")
+        self.WeaponConfigTable.column("Config", width=200)
+        self.WeaponConfigTable.column("Weapon", width=200)
+        AssocScrollbar = ttk.Scrollbar(AssocTableFrame, orient="vertical", command=self.WeaponConfigTable.yview)
+        self.WeaponConfigTable.configure(yscrollcommand=AssocScrollbar.set)
+        self.WeaponConfigTable.pack(side="left", fill="both", expand=True)
+        AssocScrollbar.pack(side="right", fill="y")
+        
+        # 关联表格按钮
+        AssocBtnFrame = ttk.Frame(AssociationFrame)
+        AssocBtnFrame.pack(fill="x", padx=5, pady=5)
+        ttk.Button(AssocBtnFrame, text="↑", width=3, command=self.MoveAssocUp).pack(side="left", padx=2)
+        ttk.Button(AssocBtnFrame, text="↓", width=3, command=self.MoveAssocDown).pack(side="left", padx=2)
+        ttk.Button(AssocBtnFrame, text="删除关联", width=10, command=self.DeleteWeaponConfigAssociation).pack(side="left", padx=2)
+        ttk.Button(AssocBtnFrame, text="清除所有", width=10, command=self.ClearAllAssociations).pack(side="left", padx=2)
+        ttk.Button(AssocBtnFrame, text="读取", width=8, command=self.LoadAssociation).pack(side="left", padx=2)
+        ttk.Button(AssocBtnFrame, text="保存", width=8, command=self.SaveAssociation).pack(side="left", padx=2)
+        
+        # 存储数据
+        self.ConfigData = {}
+        self.WeaponData = {}
+        self.WeaponConfigAssociations = []
+        
+        # 更新关联下拉框
+        self.UpdateAssociationComboboxes()
+    
+    def UpdateAssociationComboboxes(self):
+        """更新关联下拉框"""
+        # 更新配置下拉框
+        ConfigNames = []
+        for Item in self.ConfigTable.get_children():
+            Values = self.ConfigTable.item(Item, "values")
+            if Values and Values[0] != "无配置":
+                ConfigNames.append(Values[0])
+        self.AssocConfigCombo['values'] = ConfigNames
+        
+        # 更新武器下拉框
+        WeaponNames = []
+        for Item in self.WeaponTable.get_children():
+            Values = self.WeaponTable.item(Item, "values")
+            if Values and Values[0]:
+                WeaponNames.append(Values[0])
+        self.AssocWeaponCombo['values'] = WeaponNames
+    
+    def AddConfig(self):
+        """添加武器配置"""
+        Name = self.ConfigNameEntry.get().strip()
+        if Name and Name not in self.ConfigData:
+            # 检查是否已存在
+            for Item in self.ConfigTable.get_children():
+                if self.ConfigTable.item(Item, "values")[0] == Name:
+                    return
+            self.ConfigTable.insert("", tk.END, values=(Name, "", ""))
+            self.ConfigData[Name] = {"Default": False, "OnlyFull": False}
+            self.ConfigNameEntry.delete(0, tk.END)
+            self.UpdateAssociationComboboxes()
+    
+    def DeleteConfig(self):
+        """删除武器配置"""
+        Selected = self.ConfigTable.selection()
+        if Selected:
+            Values = self.ConfigTable.item(Selected[0], "values")
+            if Values and Values[0] != "无配置":
+                ConfigName = Values[0]
+                if ConfigName in self.ConfigData:
+                    del self.ConfigData[ConfigName]
+                self.ConfigTable.delete(Selected[0])
+                self.UpdateAssociationComboboxes()
+    
+    def OnConfigSelect(self, Event=None):
+        """配置选择事件"""
+        Selected = self.ConfigTable.selection()
+        if Selected:
+            Values = self.ConfigTable.item(Selected[0], "values")
+            if Values:
+                ConfigName = Values[0]
+                if ConfigName in self.ConfigData:
+                    Data = self.ConfigData[ConfigName]
+                    # 更新复选框状态已在LoadConfig中处理
+                self.LoadConfig()
+    
+    def LoadConfig(self):
+        """读取选中的配置"""
+        Selected = self.ConfigTable.selection()
+        if Selected:
+            Values = self.ConfigTable.item(Selected[0], "values")
+            if Values and Values[0] != "无配置":
+                ConfigName = Values[0]
+                self.ConfigNameEntry.delete(0, tk.END)
+                self.ConfigNameEntry.insert(0, ConfigName)
+                # 读取复选框状态
+                DefaultChecked = Values[1] == "√"
+                OnlyFullChecked = Values[2] == "√"
+                # 更新复选框状态显示
+                self.ConfigDefaultVar.set(DefaultChecked)
+                self.ConfigOnlyFullVar.set(OnlyFullChecked)
+                self.ConfigData[ConfigName]["Default"] = DefaultChecked
+                self.ConfigData[ConfigName]["OnlyFull"] = OnlyFullChecked
+                # 显示复选框区域
+                self.ConfigOptionsFrame.pack(fill="x", padx=5, pady=5)
+    
+    def SaveConfig(self):
+        """保存到选中的配置"""
+        Selected = self.ConfigTable.selection()
+        Name = self.ConfigNameEntry.get().strip()
+        if not Selected:
+            self.AddConfig()
+        elif Name:
+            OldValues = self.ConfigTable.item(Selected[0], "values")
+            if OldValues and OldValues[0] != "无配置":
+                OldName = OldValues[0]
+                # 如果名称改变，更新数据
+                if Name != OldName and Name in self.ConfigData:
+                    # 名称已存在，不允许重复
+                    return
+                if OldName in self.ConfigData:
+                    del self.ConfigData[OldName]
+                self.ConfigData[Name] = {"Default": False, "OnlyFull": False}
+                self.ConfigTable.item(Selected[0], values=(Name, "", ""))
+                self.ConfigNameEntry.delete(0, tk.END)
+                self.UpdateAssociationComboboxes()
+    
+    def AddWeapon(self):
+        """添加武器"""
+        Name = self.WeaponNameEntry.get().strip()
+        Count = self.WeaponCountEntry.get().strip()
+        if Name and Count:
+            Launch = self.WeaponLaunchEntry.get().strip()
+            Time = self.WeaponTimeEntry.get().strip()
+            AutoEngage = "√" if self.WeaponAutoEngageVar.get() else ""
+            Principal = "√" if self.WeaponPrincipalVar.get() else ""
+            DefaultOff = "√" if self.WeaponDefaultOffVar.get() else ""
+            
+            self.WeaponTable.insert("", tk.END, values=(Name, Count, Launch, Time, AutoEngage, Principal, DefaultOff))
+            self.WeaponData[Name] = {
+                "Count": Count, "Launch": Launch, "Time": Time,
+                "AutoEngage": AutoEngage, "Principal": Principal, "DefaultOff": DefaultOff
+            }
+            self.ClearWeaponInputs()
+            self.UpdateAssociationComboboxes()
+    
+    def DeleteWeapon(self):
+        """删除武器"""
+        Selected = self.WeaponTable.selection()
+        if Selected:
+            Values = self.WeaponTable.item(Selected[0], "values")
+            if Values and Values[0] in self.WeaponData:
+                del self.WeaponData[Values[0]]
+            self.WeaponTable.delete(Selected[0])
+            self.ClearWeaponInputs()
+            self.UpdateAssociationComboboxes()
+    
+    def ClearWeaponInputs(self):
+        """清除武器输入"""
+        self.WeaponNameEntry.delete(0, tk.END)
+        self.WeaponCountEntry.delete(0, tk.END)
+        self.WeaponLaunchEntry.delete(0, tk.END)
+        self.WeaponTimeEntry.delete(0, tk.END)
+        self.WeaponAutoEngageVar.set(False)
+        self.WeaponPrincipalVar.set(False)
+        self.WeaponDefaultOffVar.set(False)
+    
+    def OnWeaponSelect(self, Event=None):
+        """武器选择事件"""
+        self.LoadWeapon()
+    
+    def LoadWeapon(self):
+        """读取选中的武器"""
+        Selected = self.WeaponTable.selection()
+        if Selected:
+            Values = self.WeaponTable.item(Selected[0], "values")
+            if Values:
+                self.ClearWeaponInputs()
+                if len(Values) > 0:
+                    self.WeaponNameEntry.insert(0, Values[0])
+                if len(Values) > 1:
+                    self.WeaponCountEntry.insert(0, Values[1])
+                if len(Values) > 2:
+                    self.WeaponLaunchEntry.insert(0, Values[2])
+                if len(Values) > 3:
+                    self.WeaponTimeEntry.insert(0, Values[3])
+                if len(Values) > 4:
+                    self.WeaponAutoEngageVar.set(Values[4] == "√")
+                if len(Values) > 5:
+                    self.WeaponPrincipalVar.set(Values[5] == "√")
+                if len(Values) > 6:
+                    self.WeaponDefaultOffVar.set(Values[6] == "√")
+    
+    def SaveWeapon(self):
+        """保存到选中的武器"""
+        Selected = self.WeaponTable.selection()
+        if not Selected:
+            self.AddWeapon()
+        else:
+            Name = self.WeaponNameEntry.get().strip()
+            Count = self.WeaponCountEntry.get().strip()
+            if Name and Count:
+                Launch = self.WeaponLaunchEntry.get().strip()
+                Time = self.WeaponTimeEntry.get().strip()
+                AutoEngage = "√" if self.WeaponAutoEngageVar.get() else ""
+                Principal = "√" if self.WeaponPrincipalVar.get() else ""
+                DefaultOff = "√" if self.WeaponDefaultOffVar.get() else ""
+                
+                self.WeaponTable.item(Selected[0], values=(Name, Count, Launch, Time, AutoEngage, Principal, DefaultOff))
+                self.WeaponData[Name] = {
+                    "Count": Count, "Launch": Launch, "Time": Time,
+                    "AutoEngage": AutoEngage, "Principal": Principal, "DefaultOff": DefaultOff
+                }
+                self.ClearWeaponInputs()
+                self.UpdateAssociationComboboxes()
+    
+    def MoveWeaponUp(self):
+        """向上移动武器"""
+        Selected = self.WeaponTable.selection()
+        if Selected:
+            Index = self.WeaponTable.index(Selected[0])
+            if Index > 0:
+                self.WeaponTable.move(Selected[0], "", Index - 1)
+    
+    def MoveWeaponDown(self):
+        """向下移动武器"""
+        Selected = self.WeaponTable.selection()
+        if Selected:
+            Index = self.WeaponTable.index(Selected[0])
+            if Index < len(self.WeaponTable.get_children()) - 1:
+                self.WeaponTable.move(Selected[0], "", Index + 1)
+    
+    def AddWeaponConfigAssociation(self):
+        """添加武器配置关联"""
+        ConfigName = self.AssocConfigCombo.get()
+        WeaponName = self.AssocWeaponCombo.get()
+        if ConfigName and WeaponName:
+            # 检查是否已存在
+            for Item in self.WeaponConfigTable.get_children():
+                Values = self.WeaponConfigTable.item(Item, "values")
+                if Values and Values[0] == ConfigName and Values[1] == WeaponName:
+                    return
+            self.WeaponConfigTable.insert("", tk.END, values=(ConfigName, WeaponName))
+            self.WeaponConfigAssociations.append((ConfigName, WeaponName))
+    
+    def DeleteWeaponConfigAssociation(self):
+        """删除武器配置关联"""
+        Selected = self.WeaponConfigTable.selection()
+        if Selected:
+            Values = self.WeaponConfigTable.item(Selected[0], "values")
+            if Values:
+                ConfigName, WeaponName = Values[0], Values[1]
+                self.WeaponConfigTable.delete(Selected[0])
+                self.WeaponConfigAssociations = [
+                    assoc for assoc in self.WeaponConfigAssociations 
+                    if assoc != (ConfigName, WeaponName)
+                ]
+    
+    def MoveAssocUp(self):
+        """向上移动关联"""
+        Selected = self.WeaponConfigTable.selection()
+        if Selected:
+            Index = self.WeaponConfigTable.index(Selected[0])
+            if Index > 0:
+                self.WeaponConfigTable.move(Selected[0], "", Index - 1)
+    
+    def MoveAssocDown(self):
+        """向下移动关联"""
+        Selected = self.WeaponConfigTable.selection()
+        if Selected:
+            Index = self.WeaponConfigTable.index(Selected[0])
+            if Index < len(self.WeaponConfigTable.get_children()) - 1:
+                self.WeaponConfigTable.move(Selected[0], "", Index + 1)
+    
+    def ClearAllAssociations(self):
+        """清除所有关联"""
+        if messagebox.askyesno(self.Lang.Get("Msg_Warning"), "确定要清除所有关联吗？"):
+            for Item in self.WeaponConfigTable.get_children():
+                self.WeaponConfigTable.delete(Item)
+            self.WeaponConfigAssociations.clear()
+    
+    def LoadAssociation(self):
+        """读取选中的关联"""
+        Selected = self.WeaponConfigTable.selection()
+        if Selected:
+            Values = self.WeaponConfigTable.item(Selected[0], "values")
+            if Values and len(Values) >= 2:
+                self.AssocConfigCombo.set(Values[0])
+                self.AssocWeaponCombo.set(Values[1])
+    
+    def SaveAssociation(self):
+        """保存到选中的关联"""
+        Selected = self.WeaponConfigTable.selection()
+        if not Selected:
+            self.AddWeaponConfigAssociation()
+        else:
+            ConfigName = self.AssocConfigCombo.get()
+            WeaponName = self.AssocWeaponCombo.get()
+            if ConfigName and WeaponName:
+                self.WeaponConfigTable.item(Selected[0], values=(ConfigName, WeaponName))
+                # 更新关联列表
+                OldValues = self.WeaponConfigTable.item(Selected[0], "values")
+                if OldValues:
+                    OldConfigName, OldWeaponName = OldValues[0], OldValues[1]
+                    self.WeaponConfigAssociations = [
+                        assoc for assoc in self.WeaponConfigAssociations 
+                        if assoc != (OldConfigName, OldWeaponName)
+                    ]
+                    self.WeaponConfigAssociations.append((ConfigName, WeaponName))
+                self.AssocConfigCombo.set("")
+                self.AssocWeaponCombo.set("")
+    
+    def CreateRadarModifierTab(self):
+        """创建雷达/修改器标签页"""
+        Frame = ttk.Frame(self.Notebook)
+        self.Notebook.add(Frame, text=self.Lang.Get("Tab_RadarModifier"))
+        
+        Frame.columnconfigure(0, weight=1)
+        Frame.columnconfigure(1, weight=1)
+        Frame.rowconfigure(0, weight=1)
+        
+        # 雷达配置
+        RadarFrame = ttk.LabelFrame(Frame, text="雷达配置")
+        RadarFrame.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
+        
+        RadarInputFrame = ttk.Frame(RadarFrame)
+        RadarInputFrame.pack(fill="x", padx=5, pady=5)
+        ttk.Label(RadarInputFrame, text="雷达名称:").pack(side="left", padx=2)
+        self.RadarEntry = ttk.Combobox(RadarInputFrame, values=self.DB.Get("Radars"), width=30)
+        self.RadarEntry.pack(side="left", padx=2)
+        ttk.Button(RadarInputFrame, text="+", width=3, command=self.AddRadar).pack(side="left", padx=2)
+        ttk.Button(RadarInputFrame, text="-", width=3, command=self.DeleteRadar).pack(side="left", padx=2)
+        
+        TableFrame = ttk.Frame(RadarFrame)
+        TableFrame.pack(fill="both", expand=True, padx=5, pady=5)
+        self.RadarTable = ttk.Treeview(TableFrame, columns=("Radar",), show="headings", height=20)
+        self.RadarTable.heading("Radar", text="雷达名称")
+        self.RadarTable.column("Radar", width=350)
+        Scrollbar = ttk.Scrollbar(TableFrame, orient="vertical", command=self.RadarTable.yview)
+        self.RadarTable.configure(yscrollcommand=Scrollbar.set)
+        self.RadarTable.pack(side="left", fill="both", expand=True)
+        Scrollbar.pack(side="right", fill="y")
+        
+        BtnFrame = ttk.Frame(RadarFrame)
+        BtnFrame.pack(fill="x", padx=5, pady=5)
+        ttk.Button(BtnFrame, text="读取", width=8, command=self.LoadRadar).pack(side="left", padx=2)
+        ttk.Button(BtnFrame, text="保存", width=8, command=self.SaveRadar).pack(side="left", padx=2)
+        
+        # 修改器配置
+        ModifierFrame = ttk.LabelFrame(Frame, text="修改器配置")
+        ModifierFrame.grid(row=0, column=1, padx=10, pady=10, sticky="nsew")
+        
+        ModInputFrame = ttk.Frame(ModifierFrame)
+        ModInputFrame.pack(fill="x", padx=5, pady=5)
+        ttk.Label(ModInputFrame, text="修改器:").grid(row=0, column=0, padx=2)
+        self.ModifierNameEntry = ttk.Combobox(ModInputFrame, values=self.DB.Get("Modifiers"), width=25)
+        self.ModifierNameEntry.grid(row=0, column=1, padx=2)
+        ttk.Label(ModInputFrame, text="Value:").grid(row=1, column=0, padx=2)
+        self.ModifierValueEntry = ttk.Entry(ModInputFrame, width=10)
+        self.ModifierValueEntry.grid(row=1, column=1, padx=2, sticky="w")
+        ttk.Button(ModInputFrame, text="+", width=3, command=self.AddModifier).grid(row=0, column=2, padx=2)
+        ttk.Button(ModInputFrame, text="-", width=3, command=self.DeleteModifier).grid(row=1, column=2, padx=2)
+        
+        ModTableFrame = ttk.Frame(ModifierFrame)
+        ModTableFrame.pack(fill="both", expand=True, padx=5, pady=5)
+        self.ModifierTable = ttk.Treeview(ModTableFrame, columns=("Name", "Value"), show="headings", height=18)
+        self.ModifierTable.heading("Name", text="修改器名称")
+        self.ModifierTable.heading("Value", text="Value")
+        self.ModifierTable.column("Name", width=280)
+        self.ModifierTable.column("Value", width=80)
+        ModScrollbar = ttk.Scrollbar(ModTableFrame, orient="vertical", command=self.ModifierTable.yview)
+        self.ModifierTable.configure(yscrollcommand=ModScrollbar.set)
+        self.ModifierTable.pack(side="left", fill="both", expand=True)
+        ModScrollbar.pack(side="right", fill="y")
+        
+        ModBtnFrame = ttk.Frame(ModifierFrame)
+        ModBtnFrame.pack(fill="x", padx=5, pady=5)
+        ttk.Button(ModBtnFrame, text="读取", width=8, command=self.LoadModifier).pack(side="left", padx=2)
+        ttk.Button(ModBtnFrame, text="保存", width=8, command=self.SaveModifier).pack(side="left", padx=2)
+    
+    def AddRadar(self):
+        Value = self.RadarEntry.get().strip()
+        if Value:
+            self.RadarTable.insert("", tk.END, values=(Value,))
+            self.RadarEntry.delete(0, tk.END)
+    
+    def DeleteRadar(self):
+        Selected = self.RadarTable.selection()
+        if Selected:
+            self.RadarTable.delete(Selected[0])
+    
+    def LoadRadar(self):
+        Selected = self.RadarTable.selection()
+        if Selected:
+            Values = self.RadarTable.item(Selected[0], "values")
+            self.RadarEntry.delete(0, tk.END)
+            if Values:
+                self.RadarEntry.insert(0, Values[0])
+    
+    def SaveRadar(self):
+        Selected = self.RadarTable.selection()
+        Value = self.RadarEntry.get().strip()
+        if not Selected:
+            self.AddRadar()
+        elif Value:
+            self.RadarTable.item(Selected[0], values=(Value,))
+            self.RadarEntry.delete(0, tk.END)
+    
+    def AddModifier(self):
+        Name = self.ModifierNameEntry.get().strip()
+        if Name:
+            Value = self.ModifierValueEntry.get().strip()
+            self.ModifierTable.insert("", tk.END, values=(Name, Value))
+            self.ModifierNameEntry.delete(0, tk.END)
+            self.ModifierValueEntry.delete(0, tk.END)
+    
+    def DeleteModifier(self):
+        Selected = self.ModifierTable.selection()
+        if Selected:
+            self.ModifierTable.delete(Selected[0])
+    
+    def LoadModifier(self):
+        Selected = self.ModifierTable.selection()
+        if Selected:
+            Values = self.ModifierTable.item(Selected[0], "values")
+            self.ModifierNameEntry.delete(0, tk.END)
+            self.ModifierValueEntry.delete(0, tk.END)
+            if Values:
+                self.ModifierNameEntry.insert(0, Values[0])
+                if len(Values) > 1 and Values[1]:
+                    self.ModifierValueEntry.insert(0, Values[1])
+    
+    def SaveModifier(self):
+        Selected = self.ModifierTable.selection()
+        Name = self.ModifierNameEntry.get().strip()
+        if not Selected:
+            self.AddModifier()
+        elif Name:
+            Value = self.ModifierValueEntry.get().strip()
+            self.ModifierTable.item(Selected[0], values=(Name, Value))
+            self.ModifierNameEntry.delete(0, tk.END)
+            self.ModifierValueEntry.delete(0, tk.END)
+    
+    def CreateStateSwitchTab(self):
+        """创建状态切换标签页"""
+        Frame = ttk.Frame(self.Notebook)
+        self.Notebook.add(Frame, text=self.Lang.Get("Tab_StateSwitch"))
+        
+        Frame.columnconfigure(0, weight=1)
+        Frame.columnconfigure(1, weight=1)
+        Frame.rowconfigure(0, weight=1)
+        
+        # 状态设置组
+        self.StateVars = {}
+        StateFrame = ttk.LabelFrame(Frame, text="状态设置")
+        StateFrame.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
+        
+        # 特殊状态开关
+        self.StateVars["SpecialState"] = tk.BooleanVar()
+        ttk.Checkbutton(StateFrame, text="启用特殊状态 (SpecialState)", 
+                        variable=self.StateVars["SpecialState"]).grid(row=0, column=0, columnspan=2, padx=10, pady=10, sticky="w")
+        
+        # 状态名称
+        StateFields = [
+            ("HighState", "高状态名称:", 1),
+            ("LowState", "低状态名称:", 2),
+            ("TimeToHighState", "切换高状态时间:", 3),
+            ("TimeToLowState", "切换低状态时间:", 4),
+            ("HighStateStringIDX", "高状态字符串索引:", 5),
+            ("LowStateStringIDX", "低状态字符串索引:", 6),
+            ("StateStringIDX", "当前状态字符串索引:", 7),
+            ("StateIcon", "状态图标路径:", 8),
+            ("ToHighStateIcon", "切换高状态图标:", 9),
+            ("ToLowStateIcon", "切换低状态图标:", 10),
+            ("ToHighStateProcessingStringIDX", "高状态处理字符串:", 11),
+            ("ToLowStateProcessingStringIDX", "低状态处理字符串:", 12),
+            ("AutoOnRestDelay", "切换高状态延迟:", 13)
+        ]
+        
+        for Key, Label, Row in StateFields:
+            ttk.Label(StateFrame, text=Label).grid(row=Row, column=0, padx=10, pady=5, sticky="w")
+            Var = tk.StringVar()
+            self.StateVars[Key] = Var
+            ttk.Entry(StateFrame, textvariable=Var, width=30).grid(row=Row, column=1, padx=10, pady=5, sticky="w")
+        
+        # 自动切换组
+        AutoFrame = ttk.LabelFrame(Frame, text="自动切换设置")
+        AutoFrame.grid(row=0, column=1, padx=10, pady=10, sticky="nsew")
+        
+        # 切换选项：High/Low/None
+        ShiftOptions = ["", "High", "Low", "None"]
+        ShiftFields = [
+            ("RetreatShift", "撤退状态:", 0),
+            ("AttackShift", "攻击状态:", 1),
+            ("DefenceShift", "防御状态:", 2),
+            ("FastMoveShift", "快速移动状态:", 3),
+            ("UnderIceShift", "冰下状态:", 4),
+            ("AutoOnMove", "移动时自动切换:", 5),
+            ("AutoOnRest", "待命时自动切换:", 6)
+        ]
+        
+        for Key, Label, Row in ShiftFields:
+            ttk.Label(AutoFrame, text=Label).grid(row=Row, column=0, padx=10, pady=8, sticky="w")
+            Var = tk.StringVar()
+            self.StateVars[Key] = Var
+            Combo = ttk.Combobox(AutoFrame, textvariable=Var, values=ShiftOptions, width=15, state="readonly")
+            Combo.grid(row=Row, column=1, padx=10, pady=8, sticky="w")
+    
+    def CreateUpgradeTab(self):
+        """创建升级项标签页"""
+        Frame = ttk.Frame(self.Notebook)
+        self.Notebook.add(Frame, text=self.Lang.Get("Tab_Upgrade"))
+        
+        Frame.columnconfigure(0, weight=1)
+        Frame.columnconfigure(1, weight=1)
+        Frame.rowconfigure(0, weight=1)
+        
+        # 升级项组（新的ImprovedBy格式）
+        UpgradeFrame = ttk.LabelFrame(Frame, text="升级项 (ImprovedBy)")
+        UpgradeFrame.grid(row=0, column=0, columnspan=2, padx=10, pady=10, sticky="nsew")
+        
+        # 输入区
+        InputFrame = ttk.Frame(UpgradeFrame)
+        InputFrame.pack(fill="x", padx=5, pady=5)
+        
+        ttk.Label(InputFrame, text="科技名称:").grid(row=0, column=0, padx=2, sticky="w")
+        self.UpgradeTechEntry = ttk.Combobox(InputFrame, values=self.DB.Get("Techs"), width=25)
+        self.UpgradeTechEntry.grid(row=0, column=1, padx=2)
+        
+        # Set/Add复选框
+        OptionsFrame = ttk.Frame(InputFrame)
+        OptionsFrame.grid(row=0, column=2, padx=10)
+        self.UpgradeSetVar = tk.BooleanVar()
+        self.UpgradeAddVar = tk.BooleanVar()
+        ttk.Checkbutton(OptionsFrame, text="Set (修改值)", variable=self.UpgradeSetVar).pack(anchor="w", pady=1)
+        ttk.Checkbutton(OptionsFrame, text="Add (增加值)", variable=self.UpgradeAddVar).pack(anchor="w", pady=1)
+        
+        ttk.Label(InputFrame, text="升级项:").grid(row=1, column=0, padx=2, sticky="w")
+        self.UpgradePropertyEntry = ttk.Entry(InputFrame, width=25)
+        self.UpgradePropertyEntry.grid(row=1, column=1, padx=2)
+        
+        ttk.Label(InputFrame, text="数值:").grid(row=1, column=2, padx=2, sticky="w")
+        self.UpgradeValueEntry = ttk.Entry(InputFrame, width=15)
+        self.UpgradeValueEntry.grid(row=1, column=3, padx=2)
+        
+        BtnInputFrame = ttk.Frame(InputFrame)
+        BtnInputFrame.grid(row=0, column=4, rowspan=2, padx=5)
+        ttk.Button(BtnInputFrame, text="+", width=3, command=self.AddUpgrade).pack(pady=2)
+        ttk.Button(BtnInputFrame, text="-", width=3, command=self.DeleteUpgrade).pack(pady=2)
+        
+        # 升级项表格
+        TableFrame = ttk.Frame(UpgradeFrame)
+        TableFrame.pack(fill="both", expand=True, padx=5, pady=5)
+        self.UpgradeTable = ttk.Treeview(
+            TableFrame, 
+            columns=("Tech", "Set", "Add", "Property", "Value"), 
+            show="headings", 
+            height=20
+        )
+        self.UpgradeTable.heading("Tech", text="科技名称")
+        self.UpgradeTable.heading("Set", text="Set")
+        self.UpgradeTable.heading("Add", text="Add")
+        self.UpgradeTable.heading("Property", text="升级项")
+        self.UpgradeTable.heading("Value", text="数值")
+        self.UpgradeTable.column("Tech", width=150)
+        self.UpgradeTable.column("Set", width=50)
+        self.UpgradeTable.column("Add", width=50)
+        self.UpgradeTable.column("Property", width=150)
+        self.UpgradeTable.column("Value", width=100)
+        Scrollbar = ttk.Scrollbar(TableFrame, orient="vertical", command=self.UpgradeTable.yview)
+        self.UpgradeTable.configure(yscrollcommand=Scrollbar.set)
+        self.UpgradeTable.pack(side="left", fill="both", expand=True)
+        Scrollbar.pack(side="right", fill="y")
+        
+        # 按钮
+        BtnFrame = ttk.Frame(UpgradeFrame)
+        BtnFrame.pack(fill="x", padx=5, pady=5)
+        ttk.Button(BtnFrame, text="↑", width=3, command=self.MoveUpgradeUp).pack(side="left", padx=2)
+        ttk.Button(BtnFrame, text="↓", width=3, command=self.MoveUpgradeDown).pack(side="left", padx=2)
+        ttk.Button(BtnFrame, text="读取", width=8, command=self.LoadUpgrade).pack(side="left", padx=2)
+        ttk.Button(BtnFrame, text="保存", width=8, command=self.SaveUpgrade).pack(side="left", padx=2)
+        
+        # 存储升级项数据
+        self.UpgradeData = {}
+    
+    def AddUpgrade(self):
+        """添加升级项"""
+        Tech = self.UpgradeTechEntry.get().strip()
+        Property = self.UpgradePropertyEntry.get().strip()
+        Value = self.UpgradeValueEntry.get().strip()
+        
+        if Tech and Property and Value:
+            SetChecked = "√" if self.UpgradeSetVar.get() else ""
+            AddChecked = "√" if self.UpgradeAddVar.get() else ""
+            
+            # 检查是否已存在
+            for Item in self.UpgradeTable.get_children():
+                Values = self.UpgradeTable.item(Item, "values")
+                if Values and Values[0] == Tech and Values[3] == Property:
+                    return
+            
+            self.UpgradeTable.insert("", tk.END, values=(Tech, SetChecked, AddChecked, Property, Value))
+            self.UpgradeData[f"{Tech}_{Property}"] = {
+                "Tech": Tech,
+                "Set": self.UpgradeSetVar.get(),
+                "Add": self.UpgradeAddVar.get(),
+                "Property": Property,
+                "Value": Value
+            }
+            self.ClearUpgradeInputs()
+    
+    def DeleteUpgrade(self):
+        """删除选中的升级项"""
+        Selected = self.UpgradeTable.selection()
+        if Selected:
+            Values = self.UpgradeTable.item(Selected[0], "values")
+            if Values:
+                Key = f"{Values[0]}_{Values[3]}"
+                if Key in self.UpgradeData:
+                    del self.UpgradeData[Key]
+            self.UpgradeTable.delete(Selected[0])
+    
+    def LoadUpgrade(self):
+        """读取选中的升级项"""
+        Selected = self.UpgradeTable.selection()
+        if Selected:
+            Values = self.UpgradeTable.item(Selected[0], "values")
+            if Values:
+                self.ClearUpgradeInputs()
+                self.UpgradeTechEntry.insert(0, Values[0])
+                self.UpgradeSetVar.set(Values[1] == "√")
+                self.UpgradeAddVar.set(Values[2] == "√")
+                self.UpgradePropertyEntry.insert(0, Values[3])
+                self.UpgradeValueEntry.insert(0, Values[4])
+    
+    def SaveUpgrade(self):
+        """保存到选中的升级项"""
+        Selected = self.UpgradeTable.selection()
+        if not Selected:
+            self.AddUpgrade()
+        else:
+            Tech = self.UpgradeTechEntry.get().strip()
+            Property = self.UpgradePropertyEntry.get().strip()
+            Value = self.UpgradeValueEntry.get().strip()
+            
+            if Tech and Property and Value:
+                SetChecked = "√" if self.UpgradeSetVar.get() else ""
+                AddChecked = "√" if self.UpgradeAddVar.get() else ""
+                
+                self.UpgradeTable.item(Selected[0], values=(Tech, SetChecked, AddChecked, Property, Value))
+                self.UpgradeData[f"{Tech}_{Property}"] = {
+                    "Tech": Tech,
+                    "Set": self.UpgradeSetVar.get(),
+                    "Add": self.UpgradeAddVar.get(),
+                    "Property": Property,
+                    "Value": Value
+                }
+                self.ClearUpgradeInputs()
+    
+    def MoveUpgradeUp(self):
+        """向上移动升级项"""
+        Selected = self.UpgradeTable.selection()
+        if Selected:
+            Index = self.UpgradeTable.index(Selected[0])
+            if Index > 0:
+                self.UpgradeTable.move(Selected[0], "", Index - 1)
+    
+    def MoveUpgradeDown(self):
+        """向下移动升级项"""
+        Selected = self.UpgradeTable.selection()
+        if Selected:
+            Index = self.UpgradeTable.index(Selected[0])
+            if Index < len(self.UpgradeTable.get_children()) - 1:
+                self.UpgradeTable.move(Selected[0], "", Index + 1)
+    
+    def ClearUpgradeInputs(self):
+        """清除升级项输入"""
+        self.UpgradeTechEntry.delete(0, tk.END)
+        self.UpgradeSetVar.set(False)
+        self.UpgradeAddVar.set(False)
+        self.UpgradePropertyEntry.delete(0, tk.END)
+        self.UpgradeValueEntry.delete(0, tk.END)
+    
+    def CreateBottomButtons(self):
+        """创建底部按钮"""
+        ButtonFrame = ttk.Frame(self.MainFrame)
+        ButtonFrame.pack(side="bottom", anchor="se", padx=5, pady=5)
+        
+        ttk.Button(ButtonFrame, text=self.Lang.Get("Btn_Clear"),
+                   command=self.ClearAll).pack(side="left", padx=5)
+        ttk.Button(ButtonFrame, text=self.Lang.Get("Btn_Default"),
+                   command=self.FillDefault).pack(side="left", padx=5)
+        ttk.Button(ButtonFrame, text=self.Lang.Get("Btn_Generate"),
+                   command=self.GenerateCode).pack(side="left", padx=5)
+    
+    def ClearAll(self):
+        """清除所有数据"""
+        if messagebox.askokcancel(self.Lang.Get("Msg_Warning"), 
+                                   self.Lang.Get("Msg_ConfirmClear")):
+            for Var in self.BasicInfoVars.values():
+                Var.set("")
+            for Item in self.CustomParamsTable.get_children():
+                self.CustomParamsTable.delete(Item)
+    
+    def FillDefault(self):
+        """填充默认值"""
+        if messagebox.askokcancel(self.Lang.Get("Msg_Warning"),
+                                   self.Lang.Get("Msg_ConfirmDefault")):
+            self.ClearAll()
+            # 填充默认值示例
+            Defaults = {
+                "GlobalName": "NameExample",
+                "Tech": "U_TechExample",
+                "Type": "Ground",
+                "Class": "UC_Ground",
+                "Movie": "Units/Images/[Type]/Topdown/Example.midx",
+                "AbstractMovie": "Units/Images/[Type]/Abstract/Example.midx",
+                "Model": "Units/Images/[Type]/Example.midx",
+                "Icon": "Units/Images/Icons/[Type]/Example.png",
+                "IconIDX": "52",
+                "DrawSize": "25",
+                "Power": "10",
+                "Size": "0.5",
+                "Speed": "60",
+                "TurnSpeed": "30",
+                "ProductionCost": "0.5"
+            }
+            for Key, Value in Defaults.items():
+                if Key in self.BasicInfoVars:
+                    self.BasicInfoVars[Key].set(Value)
+    
+    def GenerateCode(self):
+        """生成代码"""
+        # 检查必填字段
+        Required = ["GlobalName", "Tech", "Type", "Movie", "Icon"]
+        for Key in Required:
+            if Key in self.BasicInfoVars and not self.BasicInfoVars[Key].get().strip():
+                messagebox.showwarning(self.Lang.Get("Msg_Warning"),
+                                        self.Lang.Get("Msg_RequiredFields"))
+                return
+        
+        # 生成代码
+        Code = self.BuildCodeString()
         
         # 显示结果窗口
-        top = tk.Toplevel(self.root)
-        top.title("生成的代码")
-        top.geometry("800x600")
+        OutputWindow = tk.Toplevel(self.Root)
+        OutputWindow.title("Generated Code")
+        OutputWindow.geometry("700x800")
         
-        text = tk.Text(top, font=("Consolas", 10))
-        text.pack(fill='both', expand=True)
-        text.insert(tk.END, code)
+        # 顶部按钮栏
+        BtnFrame = ttk.Frame(OutputWindow)
+        BtnFrame.pack(fill="x", padx=5, pady=5)
+        
+        def CopyToClipboard():
+            OutputWindow.clipboard_clear()
+            OutputWindow.clipboard_append(Code)
+            messagebox.showinfo(self.Lang.Get("Msg_Success"), "代码已复制到剪贴板")
+        
+        def SaveToFile():
+            FilePath = filedialog.asksaveasfilename(
+                defaultextension=".txt",
+                filetypes=[("Text files", "*.txt"), ("All files", "*.*")]
+            )
+            if FilePath:
+                with open(FilePath, "w", encoding="utf-8") as f:
+                    f.write(Code)
+                messagebox.showinfo(self.Lang.Get("Msg_Success"), f"代码已保存到 {FilePath}")
+        
+        ttk.Button(BtnFrame, text="复制代码", command=CopyToClipboard).pack(side="left", padx=5)
+        ttk.Button(BtnFrame, text="保存到文件", command=SaveToFile).pack(side="left", padx=5)
+        ttk.Button(BtnFrame, text="关闭", command=OutputWindow.destroy).pack(side="right", padx=5)
+        
+        # 文本区域
+        TextFrame = ttk.Frame(OutputWindow)
+        TextFrame.pack(fill="both", expand=True, padx=5, pady=5)
+        
+        Scrollbar = tk.Scrollbar(TextFrame, orient="vertical")
+        Scrollbar.pack(side="right", fill="y")
+        
+        TextWidget = tk.Text(TextFrame, width=80, height=45, 
+                             font=("Consolas", 10), yscrollcommand=Scrollbar.set)
+        TextWidget.pack(side="left", fill="both", expand=True)
+        Scrollbar.config(command=TextWidget.yview)
+        
+        TextWidget.insert(tk.END, Code)
+    
+    def BuildCodeString(self):
+        """构建代码字符串"""
+        Lines = []
+        
+        # 单位名称
+        Name = self.BasicInfoVars.get("GlobalName", tk.StringVar()).get()
+        if Name:
+            Lines.append(f'[UNIT] "{Name}"')
+        
+        # 基础属性
+        Lines.extend(self.BuildBasicInfoCode())
+        
+        # 行为控制
+        Lines.extend(self.BuildBehaviorCode())
+        
+        # 雷达配置
+        Lines.extend(self.BuildRadarCode())
+        
+        # 修改器配置
+        Lines.extend(self.BuildModifierCode())
+        
+        # 生产单位
+        Lines.extend(self.BuildProducesCode())
+        
+        # 搭载单位
+        Lines.extend(self.BuildCanCarryCode())
+        
+        # 航线配置
+        Lines.extend(self.BuildAirwayCode())
+        
+        # 子单位配置
+        Lines.extend(self.BuildCanHostAircraftsCode())
+        
+        # 武器配置
+        Lines.extend(self.BuildWeaponCode())
+        
+        # 状态切换
+        Lines.extend(self.BuildStateCode())
+        
+        # 升级项
+        Lines.extend(self.BuildUpgradeCode())
+        
+        # 自定义参数
+        for Item in self.CustomParamsTable.get_children():
+            Values = self.CustomParamsTable.item(Item, "values")
+            if Values and len(Values) >= 2:
+                Lines.append(f'    {Values[0]} {Values[1]}')
+        
+        return "\n".join(Lines)
+    
+    def BuildBasicInfoCode(self):
+        """生成基础信息代码"""
+        Lines = []
+        FieldMap = [
+            ("Tech", "Tech", True),
+            ("Type", "Type", False),
+            ("Class", "Class", False),
+            ("Movie", "Movie", True),
+            ("AbstractMovie", "AbstractMovie", True),
+            ("Model", "Model", True),
+            ("Icon", "Icon", True),
+            ("RoundIcon", "RoundIcon", True),
+            ("IconIDX", "IconIDX", False),
+            ("DrawSize", "DrawSize", False),
+            ("AbstractDrawSize", "AbstractDrawSize", False),
+            ("Sound", "Sound", False),
+            ("LaunchMeSound", "LaunchMeSound", False),
+            ("LaunchMePathIcon", "LaunchMePathIcon", True),
+            ("DrawOrder", "DrawOrder", False),
+            ("Crash", "Crash", True),
+            ("Power", "Power", False),
+            ("Size", "Size", False),
+            ("Speed", "Speed", False),
+            ("TurnSpeed", "TurnSpeed", False),
+            ("Range", "Range", False),
+            ("ProductionCost", "ProductionCost", False),
+            ("SelfDestruct", "SelfDestruct", False),
+            ("MaxElevation", "MaxElevation", False),
+            ("MinElevation", "MinElevation", False),
+            ("AutoRepair", "AutoRepair", False),
+            ("ResupplyRadius", "ResupplyRadius", False),
+            ("FollowRadius", "FollowRadius", False),
+            ("OccupationRadius", "OccupationRadius", False),
+            ("MaxAutoEngageRange", "MaxAutoEngageRange", False),
+            ("ProductionPlacementRadius", "ProductionPlacementRadius", False),
+            ("MaxNumberOnMap", "MaxNumberOnMap", False),
+            ("MaxNumberToOrder", "MaxNumberToOrder", False),
+            ("HangarSpaceRequired", "HangarSpaceRequired", False),
+            ("HangarMaxLoad", "HangarMaxLoad", False)
+        ]
+        
+        for VarKey, OutputKey, Quoted in FieldMap:
+            Value = self.BasicInfoVars.get(VarKey, tk.StringVar()).get()
+            if Value:
+                if Quoted:
+                    Lines.append(f'    {OutputKey} "{Value}"')
+                else:
+                    Lines.append(f'    {OutputKey} {Value}')
+        return Lines
+    
+    def BuildBehaviorCode(self):
+        """生成行为控制代码"""
+        Lines = []
+        for VarName, Data in self.BehaviorVars.items():
+            Var = Data["Var"]
+            CodeKey = Data["CodeKey"]
+            BType = Data["Type"]
+            HideRule = Data["HideRule"]
+            
+            IsChecked = Var.get()
+            
+            if HideRule == "HideWhenFalse" and not IsChecked:
+                continue
+            
+            if BType == "Boolean":
+                Value = "Yes" if IsChecked else "No"
+                Lines.append(f'    {CodeKey} {Value}')
+            elif BType == "Existed" and IsChecked:
+                Lines.append(f'    {CodeKey}')
+        return Lines
+    
+    def BuildRadarCode(self):
+        """生成雷达配置代码"""
+        Lines = []
+        Items = self.RadarTable.get_children()
+        if Items:
+            for Item in Items:
+                Values = self.RadarTable.item(Item, "values")
+                if Values and Values[0]:
+                    Lines.append(f'    Radar "{Values[0]}"')
+        return Lines
+    
+    def BuildModifierCode(self):
+        """生成修改器配置代码"""
+        Lines = []
+        Items = self.ModifierTable.get_children()
+        if Items:
+            Lines.append('    Modifiers')
+            Lines.append('    {')
+            for Item in Items:
+                Values = self.ModifierTable.item(Item, "values")
+                if Values and Values[0]:
+                    ModName = Values[0]
+                    ModValue = Values[1] if len(Values) > 1 and Values[1] else ""
+                    if ModValue:
+                        Lines.append(f'        {ModName} {{ Value {ModValue} }}')
+                    else:
+                        Lines.append(f'        {ModName}')
+            Lines.append('    }')
+        return Lines
+    
+    def BuildProducesCode(self):
+        """生成生产单位代码"""
+        Lines = []
+        Items = self.ProducesTable.get_children()
+        if Items:
+            Lines.append('    Produces')
+            Lines.append('    {')
+            for Item in Items:
+                Values = self.ProducesTable.item(Item, "values")
+                if Values and Values[0]:
+                    Lines.append(f'        "{Values[0]}"')
+            Lines.append('    }')
+        return Lines
+    
+    def BuildCanCarryCode(self):
+        """生成搭载单位代码"""
+        Lines = []
+        Items = self.CanCarryTable.get_children()
+        if Items:
+            Lines.append('    CanCarry')
+            Lines.append('    {')
+            for Item in Items:
+                Values = self.CanCarryTable.item(Item, "values")
+                if Values and Values[0]:
+                    Lines.append(f'        "{Values[0]}"')
+            Lines.append('    }')
+        return Lines
+    
+    def BuildAirwayCode(self):
+        """生成航线配置代码"""
+        Lines = []
+        Items = self.AirwayTable.get_children()
+        if Items:
+            Lines.append('    Airway')
+            Lines.append('    {')
+            for Item in Items:
+                Values = self.AirwayTable.item(Item, "values")
+                if Values and len(Values) >= 2:
+                    Lines.append(f'        Launch {Values[0]} Time {Values[1]}')
+            Lines.append('    }')
+        return Lines
+    
+    def BuildCanHostAircraftsCode(self):
+        """生成子单位配置代码"""
+        Lines = []
+        Items = self.HostTable.get_children()
+        if Items:
+            Lines.append('    CanHostAircrafts')
+            Lines.append('    {')
+            for Item in Items:
+                Values = self.HostTable.item(Item, "values")
+                if Values and len(Values) >= 2:
+                    UnitName = Values[0]
+                    Count = Values[1]
+                    Airway = Values[2] if len(Values) > 2 and Values[2] else ""
+                    Patrol = Values[3] if len(Values) > 3 and Values[3] else ""
+                    AutoPatrol = Values[4] if len(Values) > 4 else ""
+                    
+                    SubLines = [f'Unit "{UnitName}"', f'Count {Count}']
+                    if Airway:
+                        SubLines.append(f'Airway {Airway}')
+                    if Patrol:
+                        SubLines.append(f'Patrol {Patrol}')
+                    if AutoPatrol == "√":
+                        SubLines.append('AutoPatrol Yes')
+                    
+                    Lines.append('        {')
+                    for SubLine in SubLines:
+                        Lines.append(f'            {SubLine}')
+                    Lines.append('        }')
+            Lines.append('    }')
+        return Lines
+    
+    def BuildWeaponCode(self):
+        """生成武器配置代码"""
+        Lines = []
+        
+        # 按配置分组处理武器
+        ConfigWeapons = {}
+        
+        # 首先处理关联表
+        for Item in self.WeaponConfigTable.get_children():
+            Values = self.WeaponConfigTable.item(Item, "values")
+            if Values and len(Values) >= 2:
+                ConfigName, WeaponName = Values[0], Values[1]
+                if ConfigName not in ConfigWeapons:
+                    ConfigWeapons[ConfigName] = []
+                ConfigWeapons[ConfigName].append(WeaponName)
+        
+        # 处理"无配置"的武器
+        UnconfigWeapons = []
+        for Item in self.WeaponTable.get_children():
+            Values = self.WeaponTable.item(Item, "values")
+            if Values and Values[0]:
+                WeaponName = Values[0]
+                # 检查是否在关联表中
+                IsAssociated = False
+                for ConfigName in ConfigWeapons:
+                    if WeaponName in ConfigWeapons[ConfigName]:
+                        IsAssociated = True
+                        break
+                if not IsAssociated:
+                    UnconfigWeapons.append(WeaponName)
+        
+        # 生成武器配置代码
+        AllConfigs = set(ConfigWeapons.keys())
+        
+        # 处理有配置的武器
+        for ConfigName in AllConfigs:
+            Lines.append('    Weapons')
+            Lines.append('    {')
+            Lines.append(f'        Config "{ConfigName}"')
+            
+            # 添加Default和OnlyFull选项
+            if ConfigName in self.ConfigData:
+                ConfigInfo = self.ConfigData[ConfigName]
+                if ConfigInfo.get("Default"):
+                    Lines.append('            Default')
+                if ConfigInfo.get("OnlyFull"):
+                    Lines.append('            OnlyFull')
+            
+            # 添加该配置下的武器
+            for WeaponName in ConfigWeapons[ConfigName]:
+                if WeaponName in self.WeaponData:
+                    WeaponInfo = self.WeaponData[WeaponName]
+                    Lines.append(f'            Weapon "{WeaponName}" {WeaponInfo.get("Count", "1")}')
+                    
+                    # 添加可选参数
+                    if WeaponInfo.get("Launch"):
+                        Lines.append(f'                Launch {WeaponInfo["Launch"]}')
+                    if WeaponInfo.get("Time"):
+                        Lines.append(f'                Time {WeaponInfo["Time"]}')
+                    if WeaponInfo.get("AutoEngage"):
+                        Lines.append('                AutoEngage')
+                    if WeaponInfo.get("Principal"):
+                        Lines.append('                Principal')
+                    if WeaponInfo.get("DefaultOff"):
+                        Lines.append('                DefaultOff')
+            
+            Lines.append('    }')
+        
+        # 处理无配置的武器
+        if UnconfigWeapons:
+            Lines.append('    Weapons')
+            Lines.append('    {')
+            for WeaponName in UnconfigWeapons:
+                if WeaponName in self.WeaponData:
+                    WeaponInfo = self.WeaponData[WeaponName]
+                    Lines.append(f'        Weapon "{WeaponName}" {WeaponInfo.get("Count", "1")}')
+                    
+                    # 添加可选参数
+                    if WeaponInfo.get("Launch"):
+                        Lines.append(f'            Launch {WeaponInfo["Launch"]}')
+                    if WeaponInfo.get("Time"):
+                        Lines.append(f'            Time {WeaponInfo["Time"]}')
+                    if WeaponInfo.get("AutoEngage"):
+                        Lines.append('            AutoEngage')
+                    if WeaponInfo.get("Principal"):
+                        Lines.append('            Principal')
+                    if WeaponInfo.get("DefaultOff"):
+                        Lines.append('            DefaultOff')
+            Lines.append('    }')
+        
+        return Lines
+    
+    def BuildStateCode(self):
+        """生成状态切换代码"""
+        Lines = []
+        
+        # 检查是否启用特殊状态
+        if not self.StateVars.get("SpecialState") or not self.StateVars["SpecialState"].get():
+            return Lines
+        
+        Lines.append('    SpecialState Yes')
+        
+        # 状态名称字段
+        StateFields = [
+            ("HighState", "HighState", True),
+            ("LowState", "LowState", True),
+            ("TimeToHighState", "TimeToHighState", False),
+            ("TimeToLowState", "TimeToLowState", False),
+            ("HighStateStringIDX", "HighStateStringIDX", False),
+            ("LowStateStringIDX", "LowStateStringIDX", False),
+            ("StateStringIDX", "StateStringIDX", False),
+            ("StateIcon", "StateIcon", True),
+            ("ToHighStateIcon", "ToHighStateIcon", True),
+            ("ToLowStateIcon", "ToLowStateIcon", True),
+            ("ToHighStateProcessingStringIDX", "ToHighStateProcessingStringIDX", False),
+            ("ToLowStateProcessingStringIDX", "ToLowStateProcessingStringIDX", False),
+            ("AutoOnRestDelay", "AutoOnRestDelay", False)
+        ]
+        
+        for VarKey, OutputKey, Quoted in StateFields:
+            Var = self.StateVars.get(VarKey)
+            if Var:
+                Value = Var.get() if hasattr(Var, 'get') else ""
+                if Value:
+                    if Quoted:
+                        Lines.append(f'    {OutputKey} "{Value}"')
+                    else:
+                        Lines.append(f'    {OutputKey} {Value}')
+        
+        # 自动切换设置
+        ShiftFields = ["RetreatShift", "AttackShift", "DefenceShift", 
+                      "FastMoveShift", "UnderIceShift", "AutoOnMove", "AutoOnRest"]
+        for Field in ShiftFields:
+            Var = self.StateVars.get(Field)
+            if Var:
+                Value = Var.get() if hasattr(Var, 'get') else ""
+                if Value:
+                    Lines.append(f'    {Field} {Value}')
+        
+        return Lines
+    
+    def BuildUpgradeCode(self):
+        """生成升级项代码"""
+        Lines = []
+        
+        # 新的ImprovedBy格式升级项
+        Items = self.UpgradeTable.get_children()
+        if Items:
+            Lines.append('    ImprovedBy')
+            Lines.append('    {')
+            for Item in Items:
+                Values = self.UpgradeTable.item(Item, "values")
+                if Values and len(Values) >= 5:
+                    Tech = Values[0]
+                    SetChecked = Values[1] == "√"
+                    AddChecked = Values[2] == "√"
+                    Property = Values[3]
+                    Value = Values[4]
+                    
+                    # 构建升级项代码
+                    UpgradeLine = f'        "{Tech}"'
+                    
+                    # 添加Set或Add选项
+                    if AddChecked:
+                        UpgradeLine += f' Add {Property} {Value}'
+                    elif SetChecked:
+                        UpgradeLine += f' Set {Property} {Value}'
+                    else:
+                        # 如果都没有勾选，只输出科技名称
+                        pass
+                    
+                    Lines.append(UpgradeLine)
+            Lines.append('    }')
+        
+        return Lines
+    
+    def ImportConfig(self):
+        """导入配置"""
+        FilePath = filedialog.askopenfilename(
+            filetypes=[("JSON files", "*.json"), ("All files", "*.*")]
+        )
+        if FilePath:
+            try:
+                with open(FilePath, "r", encoding="utf-8") as f:
+                    Data = json.load(f)
+                # TODO: 解析并填充数据
+                messagebox.showinfo(self.Lang.Get("Msg_Success"), "Configuration imported.")
+            except Exception as e:
+                messagebox.showerror(self.Lang.Get("Msg_Error"), str(e))
+    
+    def ExportConfig(self):
+        """导出配置"""
+        FilePath = filedialog.asksaveasfilename(
+            defaultextension=".json",
+            filetypes=[("JSON files", "*.json"), ("All files", "*.*")]
+        )
+        if FilePath:
+            try:
+                Data = {
+                    "BasicInfo": {k: v.get() for k, v in self.BasicInfoVars.items()},
+                    "CustomParams": [
+                        self.CustomParamsTable.item(Item, "values")
+                        for Item in self.CustomParamsTable.get_children()
+                    ]
+                }
+                with open(FilePath, "w", encoding="utf-8") as f:
+                    json.dump(Data, f, ensure_ascii=False, indent=4)
+                messagebox.showinfo(self.Lang.Get("Msg_Success"), "Configuration exported.")
+            except Exception as e:
+                messagebox.showerror(self.Lang.Get("Msg_Error"), str(e))
+    
+    def Run(self):
+        """运行应用"""
+        self.Root.mainloop()
+
+
+# ============================================================================
+# 程序入口
+# ============================================================================
 
 if __name__ == "__main__":
-    root = tk.Tk()
-    
-    # 设置主题
-    style = ttk.Style()
-    try:
-        style.theme_use('vista')
-    except:
-        style.theme_use('clam')
-        
-    # 全局样式调整
-    style.configure('.', font=('Microsoft YaHei UI', 9))
-    style.configure('Treeview', rowheight=25)
-    
-    # 简单的 simpledialog 实现，避免引入额外依赖
-    import tkinter.simpledialog
-    
-    app = UnitGeneratorApp(root)
-    root.mainloop()
+    App = UnitCodeGeneratorApp()
+    App.Run()
