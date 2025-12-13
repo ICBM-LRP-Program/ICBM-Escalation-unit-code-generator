@@ -1076,6 +1076,14 @@ class UnitCodeGeneratorApp:
         # 初始化时添加"无配置"选项
         self.ConfigTable.insert("", tk.END, values=("无配置", "", ""))
         
+        # 配置选项区域
+        self.ConfigOptionsFrame = ttk.Frame(ConfigFrame)
+        self.ConfigDefaultVar = tk.BooleanVar()
+        self.ConfigOnlyFullVar = tk.BooleanVar()
+        
+        ttk.Checkbutton(self.ConfigOptionsFrame, text="Default", variable=self.ConfigDefaultVar).pack(side="left", padx=5)
+        ttk.Checkbutton(self.ConfigOptionsFrame, text="OnlyFull", variable=self.ConfigOnlyFullVar).pack(side="left", padx=5)
+        
         # 配置按钮
         ConfigBtnFrame = ttk.Frame(ConfigFrame)
         ConfigBtnFrame.pack(fill="x", padx=5, pady=5)
@@ -1298,8 +1306,16 @@ class UnitCodeGeneratorApp:
                     return
                 if OldName in self.ConfigData:
                     del self.ConfigData[OldName]
-                self.ConfigData[Name] = {"Default": False, "OnlyFull": False}
-                self.ConfigTable.item(Selected[0], values=(Name, "", ""))
+                
+                # 获取当前复选框状态
+                DefaultChecked = self.ConfigDefaultVar.get()
+                OnlyFullChecked = self.ConfigOnlyFullVar.get()
+                self.ConfigData[Name] = {"Default": DefaultChecked, "OnlyFull": OnlyFullChecked}
+                
+                # 更新表格显示
+                DefaultStr = "√" if DefaultChecked else ""
+                OnlyFullStr = "√" if OnlyFullChecked else ""
+                self.ConfigTable.item(Selected[0], values=(Name, DefaultStr, OnlyFullStr))
                 self.ConfigNameEntry.delete(0, tk.END)
                 self.UpdateAssociationComboboxes()
     
