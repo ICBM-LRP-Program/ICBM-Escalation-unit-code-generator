@@ -330,13 +330,14 @@ class UnitCodeGeneratorApp:
         # 获取屏幕尺寸并居中显示
         ScreenWidth = self.Root.winfo_screenwidth()
         ScreenHeight = self.Root.winfo_screenheight()
-        WindowWidth = 1024
-        WindowHeight = 768
+        WindowWidth = 1200
+        WindowHeight = 900
         X = (ScreenWidth - WindowWidth) // 2
         Y = (ScreenHeight - WindowHeight) // 2
         
         self.Root.geometry(f"{WindowWidth}x{WindowHeight}+{X}+{Y}")
-        self.Root.resizable(False, False)
+        self.Root.resizable(True, True)  # 允许窗口调整大小
+        self.Root.minsize(1000, 700)  # 设置最小尺寸
     
     def CreateWidgets(self):
         """创建所有控件"""
@@ -426,12 +427,65 @@ class UnitCodeGeneratorApp:
         
         # 更新标签页标题
         if hasattr(self, 'Notebook') and self.Notebook is not None:
-            # 重新创建标签页标题（复杂操作，暂时跳过）
-            pass
+            # 获取所有标签页的ID和索引
+            for i in range(self.Notebook.index("end")):
+                # 根据索引设置新的标题
+                if i == 0:
+                    self.Notebook.tab(i, text=self.Lang.Get("Tab_BasicInfo"))
+                elif i == 1:
+                    self.Notebook.tab(i, text=self.Lang.Get("Tab_Behavior"))
+                elif i == 2:
+                    self.Notebook.tab(i, text=self.Lang.Get("Tab_SubUnit"))
+                elif i == 3:
+                    self.Notebook.tab(i, text=self.Lang.Get("Tab_Weapon"))
+                elif i == 4:
+                    self.Notebook.tab(i, text=self.Lang.Get("Tab_RadarModifier"))
+                elif i == 5:
+                    self.Notebook.tab(i, text=self.Lang.Get("Tab_StateSwitch"))
+                elif i == 6:
+                    self.Notebook.tab(i, text=self.Lang.Get("Tab_Upgrade"))
         
-        # 更新按钮文本
-        # 这里可以添加更多文本更新逻辑
-        pass
+        # 更新工具栏按钮文本
+        if hasattr(self, 'LanguageCombo'):
+            self.LanguageCombo.set(self.Lang.CurrentLanguage)
+        
+        # 重新创建基本标签页以更新文本
+        self.RecreateBasicInfoTab()
+        
+        # 更新底部按钮文本
+        self.UpdateBottomButtons()
+        
+        # 更新自定义参数表格标题
+        if hasattr(self, 'CustomParamsTable'):
+            self.CustomParamsTable.heading("Parameter", text=self.Lang.Get("Col_Parameter"))
+            self.CustomParamsTable.heading("Value", text=self.Lang.Get("Col_Value"))
+    
+    def RecreateBasicInfoTab(self):
+        """重新创建基本信息标签页以更新文本"""
+        # 保存当前标签页选择
+        current_tab = self.Notebook.index("current")
+        
+        # 移除旧的标签页
+        for tab_id in self.Notebook.tabs():
+            self.Notebook.forget(tab_id)
+        
+        # 重新创建所有标签页
+        self.CreateBasicInfoTab()
+        self.CreateBehaviorTab()
+        self.CreateSubUnitTab()
+        self.CreateWeaponTab()
+        self.CreateRadarModifierTab()
+        self.CreateStateSwitchTab()
+        self.CreateUpgradeTab()
+        
+        # 恢复标签页选择
+        self.Notebook.select(current_tab)
+    
+    def UpdateBottomButtons(self):
+        """更新底部按钮文本"""
+        if hasattr(self, 'BottomButtons'):
+            for button, text_key in self.BottomButtons:
+                button.config(text=self.Lang.Get(text_key))
     
     def CreateBasicInfoTab(self):
         """创建基本信息标签页"""
@@ -1428,14 +1482,31 @@ class UnitCodeGeneratorApp:
         """添加武器配置关联"""
         ConfigName = self.AssocConfigCombo.get()
         WeaponName = self.AssocWeaponCombo.get()
-        if ConfigName and WeaponName:
-            # 检查是否已存在
-            for Item in self.WeaponConfigTable.get_children():
-                Values = self.WeaponConfigTable.item(Item, "values")
-                if Values and Values[0] == ConfigName and Values[1] == WeaponName:
-                    return
-            self.WeaponConfigTable.insert("", tk.END, values=(ConfigName, WeaponName))
-            self.WeaponConfigAssociations.append((ConfigName, WeaponName))
+        
+        # 验证必填项
+        if not ConfigName:
+            messagebox.showwarning(self.Lang.Get("Msg_Warning"), "请选择配置！")
+            return
+        if not WeaponName:
+            messagebox.showwarning(self.Lang.Get("Msg_Warning"), "请选择武器！")
+            return
+            
+        # 检查是否已存在
+        for Item in self.WeaponConfigTable.get_children():
+            Values = self.WeaponConfigTable.item(Item, "values")
+            if Values and Values[0] == ConfigName and Values[1] == WeaponName:
+                messagebox.showwarning(self.Lang.Get("Msg_Warning"), 
+                    f"关联已存在：\n配置：{ConfigName}\n武器：{WeaponName}")
+                return
+        
+        self.WeaponConfigTable.insert("", tk.END, values=(ConfigName, WeaponName))
+        self.WeaponConfigAssociations.append((ConfigName, WeaponName))
+        
+        # 清空选择
+        self.AssocConfigCombo.set("")
+        self.AssocWeaponCombo.set("")
+        
+        messagebox.showinfo(self.Lang.Get("Msg_Success"), "关联已添加！")
     
     def DeleteWeaponConfigAssociation(self):
         """删除武器配置关联"""
@@ -1783,25 +1854,44 @@ class UnitCodeGeneratorApp:
         Property = self.UpgradePropertyEntry.get().strip()
         Value = self.UpgradeValueEntry.get().strip()
         
-        if Tech and Property and Value:
-            SetChecked = "√" if self.UpgradeSetVar.get() else ""
-            AddChecked = "√" if self.UpgradeAddVar.get() else ""
+        # 验证必填项
+        MissingFields = []
+        if not Tech:
+            MissingFields.append("科技名称")
+        if not Property:
+            MissingFields.append("升级项")
+        if not Value:
+            MissingFields.append("数值")
             
-            # 检查是否已存在
-            for Item in self.UpgradeTable.get_children():
-                Values = self.UpgradeTable.item(Item, "values")
-                if Values and Values[0] == Tech and Values[3] == Property:
-                    return
-            
-            self.UpgradeTable.insert("", tk.END, values=(Tech, SetChecked, AddChecked, Property, Value))
-            self.UpgradeData[f"{Tech}_{Property}"] = {
-                "Tech": Tech,
-                "Set": self.UpgradeSetVar.get(),
-                "Add": self.UpgradeAddVar.get(),
-                "Property": Property,
-                "Value": Value
-            }
-            self.ClearUpgradeInputs()
+        if MissingFields:
+            messagebox.showwarning(
+                self.Lang.Get("Msg_Warning"),
+                f"以下必填项不能为空：\n" + "\n".join([f"• {field}" for field in MissingFields])
+            )
+            return
+        
+        SetChecked = "√" if self.UpgradeSetVar.get() else ""
+        AddChecked = "√" if self.UpgradeAddVar.get() else ""
+        
+        # 检查是否已存在
+        for Item in self.UpgradeTable.get_children():
+            Values = self.UpgradeTable.item(Item, "values")
+            if Values and Values[0] == Tech and Values[3] == Property:
+                messagebox.showwarning(
+                    self.Lang.Get("Msg_Warning"),
+                    f"升级项已存在：\n科技：{Tech}\n升级项：{Property}"
+                )
+                return
+        
+        self.UpgradeTable.insert("", tk.END, values=(Tech, SetChecked, AddChecked, Property, Value))
+        self.UpgradeData[f"{Tech}_{Property}"] = {
+            "Tech": Tech,
+            "Set": self.UpgradeSetVar.get(),
+            "Add": self.UpgradeAddVar.get(),
+            "Property": Property,
+            "Value": Value
+        }
+        self.ClearUpgradeInputs()
     
     def DeleteUpgrade(self):
         """删除选中的升级项"""
