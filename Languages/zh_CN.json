@@ -52,8 +52,8 @@
     "Label_HangarMaxLoad": "最大容量:",
     "Btn_Add": "+",
     "Btn_Delete": "-",
-    "Btn_Load": "读取选中项",
-    "Btn_Save": "保存至选中项",
+    "Btn_Load": "读取",
+    "Btn_Save": "保存",
     "Btn_MoveUp": "↑",
     "Btn_MoveDown": "↓",
     "Btn_Clear": "清除",
@@ -221,5 +221,16 @@
     "Behavior_Slave": "附属于母单位",
     "Behavior_NoAutoDeploy": "不自动部署",
     "Behavior_ExecuteOrdersWhenBesieged": "被围困时执行命令",
-    "Behavior_HideAbstract": "隐藏缩略图"
+    "Behavior_HideAbstract": "隐藏缩略图",
+    "Menu_Database": "数据库",
+    "MenuItem_SelectDatabase": "选择数据库文件夹...",
+    "MenuItem_ResetDatabase": "重置为默认数据库",
+    "MenuItem_CurrentDatabase": "当前数据库",
+    "Msg_SelectDatabaseFolder": "请选择包含数据库CSV文件的文件夹",
+    "Msg_DatabaseLoadSuccess": "数据库加载成功！",
+    "Msg_DatabaseLoadFailed": "数据库加载失败",
+    "Msg_MissingDatabaseFiles": "缺少以下数据库文件：",
+    "Msg_DatabaseResetSuccess": "已重置为默认数据库",
+    "Msg_CurrentDatabasePath": "当前数据库路径：",
+    "Msg_ConfirmResetDatabase": "确定要重置为默认数据库吗？\n这将放弃当前数据库的选择。"
 }

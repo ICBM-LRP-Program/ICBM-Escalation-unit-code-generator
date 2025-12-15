@@ -365,55 +365,152 @@ class DatabaseManager:
     
     def __init__(self):
         self.DatabaseDir = os.path.join(os.path.dirname(__file__), "Database")
+        self.CurrentDatabasePath = None
+        self.ConfigFile = os.path.join(self.DatabaseDir, "database_config.json")
         self.Data = {
-            "Types": [],
-            "Classes": [],
+            "Type": [],
+            "Class": [],
             "Units": [],
-            "Techs": [],
-            "Weapons": [],
-            "Radars": [],
-            "Modifiers": [],
-            "Crashes": []
+            "Tech": [],
+            "Weapon": [],
+            "Radar": [],
+            "Modifier": [],
+            "Crash": []
         }
+        self.LoadDatabaseConfig()
         self.LoadDatabases()
+    
+    def LoadDatabaseConfig(self):
+        """加载数据库配置"""
+        try:
+            if os.path.exists(self.ConfigFile):
+                with open(self.ConfigFile, "r", encoding="utf-8") as f:
+                    Config = json.load(f)
+                    self.CurrentDatabasePath = Config.get("current_database_path", None)
+        except Exception as e:
+            print(f"加载数据库配置失败: {e}")
+            self.CurrentDatabasePath = None
+    
+    def SaveDatabaseConfig(self):
+        """保存数据库配置"""
+        try:
+            Config = {
+                "current_database_path": self.CurrentDatabasePath,
+                "last_updated": __import__('datetime').datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            }
+            with open(self.ConfigFile, "w", encoding="utf-8") as f:
+                json.dump(Config, f, ensure_ascii=False, indent=4)
+        except Exception as e:
+            print(f"保存数据库配置失败: {e}")
     
     def LoadDatabases(self):
         """加载所有数据库文件"""
-        if not os.path.exists(self.DatabaseDir):
-            os.makedirs(self.DatabaseDir)
-            self.CreateDefaultDatabases()
+        # 确定数据库路径
+        if self.CurrentDatabasePath and os.path.exists(self.CurrentDatabasePath):
+            DbPath = self.CurrentDatabasePath
+        else:
+            # 使用默认数据库
+            DbPath = os.path.join(self.DatabaseDir, "Default")
+            if not os.path.exists(DbPath):
+                os.makedirs(DbPath)
+                self.CreateDefaultDatabases()
+            self.CurrentDatabasePath = DbPath
         
+        # 加载数据库文件 - 按行读取
         for Category in self.Data.keys():
-            FilePath = os.path.join(self.DatabaseDir, f"{Category}.csv")
+            FilePath = os.path.join(DbPath, f"{Category}.csv")
             if os.path.exists(FilePath):
                 try:
                     with open(FilePath, "r", encoding="utf-8") as f:
                         Reader = csv.reader(f)
+                        # 读取所有行，每行第一列作为一个条目
+                        self.Data[Category] = []
                         for Row in Reader:
-                            self.Data[Category] = Row
-                            break  # 只读取第一行
+                            if Row and Row[0].strip():  # 确保行不为空且第一列有内容
+                                self.Data[Category].append(Row[0].strip())
                 except Exception as e:
                     print(f"加载数据库失败: {Category}.csv, 错误: {e}")
+            else:
+                self.Data[Category] = []
     
     def CreateDefaultDatabases(self):
-        """创建默认数据库文件"""
+        """创建默认数据库文件 - 按行保存"""
         DefaultData = {
-            "Types": ["Ground", "Airborne", "Naval", "Subwater", "Satellite"],
-            "Classes": ["UC_Ground", "UC_Airborne", "UC_Naval", "UC_Subwater", "UC_Satellite"],
+            "Type": ["Ground", "Airborne", "Naval", "Subwater", "Satellite"],
+            "Class": ["UC_Ground", "UC_Airborne", "UC_Naval", "UC_Subwater", "UC_Satellite"],
             "Units": ["Infantry", "Tank", "Aircraft", "Ship", "Submarine"],
-            "Techs": ["U_Infantry", "U_Tank", "U_Aircraft", "U_Ship", "U_Submarine"],
-            "Weapons": ["HMG", "Cannon", "Missile", "Torpedo", "Bomb"],
-            "Radars": ["Standard_Radar", "Advanced_Radar", "Spy_Camera"],
-            "Modifiers": ["EMP_Killable", "EMP_Defence_Mod_1", "Stealth_Mod"],
-            "Crashes": ["std_bomb", "big_bomb", "small_bomb"]
+            "Tech": ["U_Infantry", "U_Tank", "U_Aircraft", "U_Ship", "U_Submarine"],
+            "Weapon": ["HMG", "Cannon", "Missile", "Torpedo", "Bomb"],
+            "Radar": ["Standard_Radar", "Advanced_Radar", "Spy_Camera"],
+            "Modifier": ["EMP_Killable", "EMP_Defence_Mod_1", "Stealth_Mod"],
+            "Crash": ["std_bomb", "big_bomb", "small_bomb"]
         }
         
+        # 保存到Default子目录
+        DefaultPath = os.path.join(self.DatabaseDir, "Default")
+        if not os.path.exists(DefaultPath):
+            os.makedirs(DefaultPath)
+        
         for Category, Values in DefaultData.items():
-            FilePath = os.path.join(self.DatabaseDir, f"{Category}.csv")
+            FilePath = os.path.join(DefaultPath, f"{Category}.csv")
             with open(FilePath, "w", encoding="utf-8", newline="") as f:
                 Writer = csv.writer(f)
-                Writer.writerow(Values)
+                # 每个值写入一行
+                for Value in Values:
+                    Writer.writerow([Value])
             self.Data[Category] = Values
+    
+    def ValidateDatabaseFolder(self, FolderPath):
+        """验证数据库文件夹是否包含所有必需的CSV文件"""
+        if not os.path.exists(FolderPath):
+            return False, ["文件夹不存在"]
+        
+        MissingFiles = []
+        for Category in self.Data.keys():
+            FilePath = os.path.join(FolderPath, f"{Category}.csv")
+            if not os.path.exists(FilePath):
+                MissingFiles.append(f"{Category}.csv")
+        
+        if MissingFiles:
+            return False, MissingFiles
+        return True, []
+    
+    def LoadDatabaseFromFolder(self, FolderPath):
+        """从指定文件夹加载数据库 - 按行读取"""
+        # 验证文件夹
+        IsValid, MissingFiles = self.ValidateDatabaseFolder(FolderPath)
+        if not IsValid:
+            return False, MissingFiles
+        
+        # 加载数据
+        try:
+            for Category in self.Data.keys():
+                FilePath = os.path.join(FolderPath, f"{Category}.csv")
+                with open(FilePath, "r", encoding="utf-8") as f:
+                    Reader = csv.reader(f)
+                    # 读取所有行，每行第一列作为一个条目
+                    self.Data[Category] = []
+                    for Row in Reader:
+                        if Row and Row[0].strip():  # 确保行不为空且第一列有内容
+                            self.Data[Category].append(Row[0].strip())
+            
+            # 更新当前数据库路径
+            self.CurrentDatabasePath = FolderPath
+            self.SaveDatabaseConfig()
+            return True, []
+        except Exception as e:
+            return False, [str(e)]
+    
+    def ResetToDefault(self):
+        """重置为默认数据库"""
+        DefaultPath = os.path.join(self.DatabaseDir, "Default")
+        if not os.path.exists(DefaultPath):
+            os.makedirs(DefaultPath)
+            self.CreateDefaultDatabases()
+        
+        self.CurrentDatabasePath = DefaultPath
+        self.LoadDatabases()
+        self.SaveDatabaseConfig()
     
     def Get(self, Category):
         """获取指定类别的数据列表"""
@@ -426,11 +523,13 @@ class DatabaseManager:
             self.SaveCategory(Category)
     
     def SaveCategory(self, Category):
-        """保存指定类别的数据"""
-        FilePath = os.path.join(self.DatabaseDir, f"{Category}.csv")
+        """保存指定类别的数据 - 按行保存"""
+        FilePath = os.path.join(self.CurrentDatabasePath or self.DatabaseDir, f"{Category}.csv")
         with open(FilePath, "w", encoding="utf-8", newline="") as f:
             Writer = csv.writer(f)
-            Writer.writerow(self.Data[Category])
+            # 每个值写入一行
+            for Value in self.Data[Category]:
+                Writer.writerow([Value])
 
 
 # ============================================================================
@@ -527,6 +626,14 @@ class UnitCodeGeneratorApp:
                 value=LangCode,
                 command=lambda code=LangCode: self.ChangeLanguage(code)
             )
+        
+        # 数据库菜单
+        DatabaseMenu = tk.Menu(MenuBar, tearoff=0)
+        MenuBar.add_cascade(label=self.Lang.Get("Menu_Database"), menu=DatabaseMenu)
+        DatabaseMenu.add_command(label=self.Lang.Get("MenuItem_SelectDatabase"), command=self.SelectDatabaseFolder)
+        DatabaseMenu.add_command(label=self.Lang.Get("MenuItem_ResetDatabase"), command=self.ResetDatabaseToDefault)
+        DatabaseMenu.add_separator()
+        DatabaseMenu.add_command(label=self.Lang.Get("MenuItem_CurrentDatabase"), command=self.ShowCurrentDatabase)
         
         # 帮助菜单
         HelpMenu = tk.Menu(MenuBar, tearoff=0)
@@ -679,7 +786,7 @@ class UnitCodeGeneratorApp:
         # 第一列字段
         Col1Fields = [
             ("GlobalName", "Label_GlobalName", "entry", None),
-            ("Tech", "Label_Tech", "combo", "Techs"),
+            ("Tech", "Label_Tech", "combo", "Tech"),
             ("Movie", "Label_Movie", "entry", None),
             ("AbstractMovie", "Label_AbstractMovie", "entry", None),
             ("Model", "Label_Model", "entry", None),
@@ -704,9 +811,9 @@ class UnitCodeGeneratorApp:
         
         # 第二列字段
         Col2Fields = [
-            ("Type", "Label_Type", "combo", "Types"),
-            ("Crash", "Label_Crash", "combo", "Crashes"),
-            ("Class", "Label_Class", "combo", "Classes"),
+            ("Type", "Label_Type", "combo", "Type"),
+            ("Crash", "Label_Crash", "combo", "Crash"),
+            ("Class", "Label_Class", "combo", "Class"),
             ("DrawSize", "Label_DrawSize", "entry", None),
             ("AbstractDrawSize", "Label_AbstractDrawSize", "entry", None),
             ("Sound", "Label_Sound", "entry", None),
@@ -1159,11 +1266,11 @@ class UnitCodeGeneratorApp:
         
         ttk.Label(InputFrame, text=self.Lang.Get("Label_UnitName")).grid(row=0, column=0, padx=2, sticky="w")
         self.HostUnitEntry = ttk.Combobox(InputFrame, values=self.DB.Get("Units"), width=17)
-        self.HostUnitEntry.grid(row=0, column=1, columnspan=2, padx=2)
+        self.HostUnitEntry.grid(row=0, column=1, columnspan=3, padx=2)
         
-        ttk.Label(InputFrame, text=self.Lang.Get("Label_Count")).grid(row=0, column=3, padx=2)
+        ttk.Label(InputFrame, text=self.Lang.Get("Label_Count")).grid(row=1, column=4, padx=2)
         self.HostCountEntry = ttk.Entry(InputFrame, width=6)
-        self.HostCountEntry.grid(row=0, column=4, padx=2)
+        self.HostCountEntry.grid(row=1, column=5, padx=2)
         
         ttk.Label(InputFrame, text=self.Lang.Get("Label_Airway")).grid(row=1, column=0, padx=2, sticky="w")
         self.HostAirwayEntry = ttk.Entry(InputFrame, width=6)
@@ -1174,10 +1281,10 @@ class UnitCodeGeneratorApp:
         self.HostPatrolEntry.grid(row=1, column=3, padx=2)
         
         self.HostAutoPatrolVar = tk.BooleanVar()
-        ttk.Checkbutton(InputFrame, text=self.Lang.Get("Label_AutoPatrol"), variable=self.HostAutoPatrolVar).grid(row=1, column=4, padx=2)
+        ttk.Checkbutton(InputFrame, text=self.Lang.Get("Label_AutoPatrol"), variable=self.HostAutoPatrolVar).grid(row=0, column=4, padx=2, columnspan=2)
         
         BtnInputFrame = ttk.Frame(InputFrame)
-        BtnInputFrame.grid(row=0, column=5, rowspan=2, padx=5)
+        BtnInputFrame.grid(row=0, column=6, rowspan=2, padx=5, sticky="e")
         ttk.Button(BtnInputFrame, text="+", width=3, command=self.AddHostAircraft).pack(pady=2)
         ttk.Button(BtnInputFrame, text="-", width=3, command=self.DeleteHostAircraft).pack(pady=2)
         
@@ -1345,6 +1452,7 @@ class UnitCodeGeneratorApp:
         InputFrame = ttk.Frame(WeaponFrame)
         InputFrame.pack(fill="x", padx=5, pady=5)
         
+        # 第一行：所有Entry输入框
         ttk.Label(InputFrame, text=self.Lang.Get("Label_WeaponName")).grid(row=0, column=0, padx=2, sticky="w")
         self.WeaponNameEntry = ttk.Combobox(InputFrame, values=self.DB.Get("Weapons"), width=18)
         self.WeaponNameEntry.grid(row=0, column=1, padx=2)
@@ -1353,17 +1461,17 @@ class UnitCodeGeneratorApp:
         self.WeaponCountEntry = ttk.Entry(InputFrame, width=8)
         self.WeaponCountEntry.grid(row=0, column=3, padx=2)
         
-        ttk.Label(InputFrame, text="Launch:").grid(row=1, column=0, padx=2, sticky="w")
+        ttk.Label(InputFrame, text="Launch:").grid(row=0, column=4, padx=2)
         self.WeaponLaunchEntry = ttk.Entry(InputFrame, width=8)
-        self.WeaponLaunchEntry.grid(row=1, column=1, padx=2)
+        self.WeaponLaunchEntry.grid(row=0, column=5, padx=2)
         
-        ttk.Label(InputFrame, text="Time:").grid(row=1, column=2, padx=2)
+        ttk.Label(InputFrame, text="Time:").grid(row=0, column=6, padx=2)
         self.WeaponTimeEntry = ttk.Entry(InputFrame, width=8)
-        self.WeaponTimeEntry.grid(row=1, column=3, padx=2)
+        self.WeaponTimeEntry.grid(row=0, column=7, padx=2)
         
-        # 复选框
+        # 第二行：复选框
         CheckFrame = ttk.Frame(InputFrame)
-        CheckFrame.grid(row=2, column=0, columnspan=4, pady=5)
+        CheckFrame.grid(row=1, column=0, columnspan=8, pady=5, sticky="w")
         
         self.WeaponAutoEngageVar = tk.BooleanVar()
         self.WeaponPrincipalVar = tk.BooleanVar()
@@ -1373,11 +1481,11 @@ class UnitCodeGeneratorApp:
         ttk.Checkbutton(CheckFrame, text="Principal", variable=self.WeaponPrincipalVar).pack(side="left", padx=5)
         ttk.Checkbutton(CheckFrame, text="DefaultOff", variable=self.WeaponDefaultOffVar).pack(side="left", padx=5)
         
-        # 按钮
+        # 按钮（右侧，占两行）
         BtnFrame = ttk.Frame(InputFrame)
-        BtnFrame.grid(row=0, column=4, rowspan=3, padx=5)
-        ttk.Button(BtnFrame, text="+", width=3, command=self.AddWeapon).pack(pady=2)
-        ttk.Button(BtnFrame, text="-", width=3, command=self.DeleteWeapon).pack(pady=2)
+        BtnFrame.grid(row=0, column=8, rowspan=2, padx=5, sticky="e")
+        ttk.Button(BtnFrame, text="+", width=3, command=self.AddWeapon).pack(pady=2, anchor="e")
+        ttk.Button(BtnFrame, text="-", width=3, command=self.DeleteWeapon).pack(pady=2, anchor="e")
         
         # 武器表格
         TableFrame = ttk.Frame(WeaponFrame)
@@ -2039,30 +2147,33 @@ class UnitCodeGeneratorApp:
         InputFrame = ttk.Frame(UpgradeFrame)
         InputFrame.pack(fill="x", padx=5, pady=5)
         
+        # 第一行：科技名称、升级项、数值
         ttk.Label(InputFrame, text=self.Lang.Get("Label_TechName")).grid(row=0, column=0, padx=2, sticky="w")
         self.UpgradeTechEntry = ttk.Combobox(InputFrame, values=self.DB.Get("Techs"), width=25)
         self.UpgradeTechEntry.grid(row=0, column=1, padx=2)
         
-        # Set/Add复选框
-        OptionsFrame = ttk.Frame(InputFrame)
-        OptionsFrame.grid(row=0, column=2, padx=10)
+        ttk.Label(InputFrame, text=self.Lang.Get("Label_UpgradeProperty")).grid(row=0, column=2, padx=2, sticky="w")
+        self.UpgradePropertyEntry = ttk.Entry(InputFrame, width=20)
+        self.UpgradePropertyEntry.grid(row=0, column=3, padx=2)
+        
+        ttk.Label(InputFrame, text=self.Lang.Get("Label_Value")).grid(row=0, column=4, padx=2, sticky="w")
+        self.UpgradeValueEntry = ttk.Entry(InputFrame, width=15)
+        self.UpgradeValueEntry.grid(row=0, column=5, padx=2)
+        
+        # 第二行：Set/Add复选框（横向布局）
+        CheckFrame = ttk.Frame(InputFrame)
+        CheckFrame.grid(row=1, column=0, columnspan=6, pady=5, sticky="w")
+        
         self.UpgradeSetVar = tk.BooleanVar()
         self.UpgradeAddVar = tk.BooleanVar()
-        ttk.Checkbutton(OptionsFrame, text=self.Lang.Get("Label_SetValue"), variable=self.UpgradeSetVar).pack(anchor="w", pady=1)
-        ttk.Checkbutton(OptionsFrame, text=self.Lang.Get("Label_AddValue"), variable=self.UpgradeAddVar).pack(anchor="w", pady=1)
+        ttk.Checkbutton(CheckFrame, text=self.Lang.Get("Label_SetValue"), variable=self.UpgradeSetVar).pack(side="left", padx=5)
+        ttk.Checkbutton(CheckFrame, text=self.Lang.Get("Label_AddValue"), variable=self.UpgradeAddVar).pack(side="left", padx=5)
         
-        ttk.Label(InputFrame, text=self.Lang.Get("Label_UpgradeProperty")).grid(row=1, column=0, padx=2, sticky="w")
-        self.UpgradePropertyEntry = ttk.Entry(InputFrame, width=25)
-        self.UpgradePropertyEntry.grid(row=1, column=1, padx=2)
-        
-        ttk.Label(InputFrame, text=self.Lang.Get("Label_Value")).grid(row=1, column=2, padx=2, sticky="w")
-        self.UpgradeValueEntry = ttk.Entry(InputFrame, width=15)
-        self.UpgradeValueEntry.grid(row=1, column=3, padx=2)
-        
+        # 按钮（右侧，占两行）
         BtnInputFrame = ttk.Frame(InputFrame)
-        BtnInputFrame.grid(row=0, column=4, rowspan=2, padx=5)
-        ttk.Button(BtnInputFrame, text=self.Lang.Get("Btn_Add"), width=3, command=self.AddUpgrade).pack(pady=2)
-        ttk.Button(BtnInputFrame, text=self.Lang.Get("Btn_Delete"), width=3, command=self.DeleteUpgrade).pack(pady=2)
+        BtnInputFrame.grid(row=0, column=6, rowspan=2, padx=5, sticky="e")
+        ttk.Button(BtnInputFrame, text=self.Lang.Get("Btn_Add"), width=3, command=self.AddUpgrade).pack(pady=2, anchor="e")
+        ttk.Button(BtnInputFrame, text=self.Lang.Get("Btn_Delete"), width=3, command=self.DeleteUpgrade).pack(pady=2, anchor="e")
         
         # 升级项表格
         TableFrame = ttk.Frame(UpgradeFrame)
@@ -2692,6 +2803,67 @@ class UnitCodeGeneratorApp:
                     Lines.append(UpgradeLine)
         
         return Lines
+    
+    def SelectDatabaseFolder(self):
+        """选择数据库文件夹"""
+        FolderPath = filedialog.askdirectory(
+            title=self.Lang.Get("Msg_SelectDatabaseFolder"),
+            initialdir=self.DB.DatabaseDir
+        )
+        
+        if FolderPath:
+            Success, Errors = self.DB.LoadDatabaseFromFolder(FolderPath)
+            if Success:
+                messagebox.showinfo(
+                    self.Lang.Get("Msg_Success"),
+                    self.Lang.Get("Msg_DatabaseLoadSuccess")
+                )
+                self.UpdateAllComboboxes()
+            else:
+                ErrorMsg = self.Lang.Get("Msg_DatabaseLoadFailed") + "\n\n"
+                ErrorMsg += self.Lang.Get("Msg_MissingDatabaseFiles") + "\n"
+                ErrorMsg += "\n".join(Errors)
+                messagebox.showerror(self.Lang.Get("Msg_Error"), ErrorMsg)
+    
+    def ResetDatabaseToDefault(self):
+        """重置为默认数据库"""
+        if messagebox.askyesno(
+            self.Lang.Get("Msg_Warning"),
+            self.Lang.Get("Msg_ConfirmResetDatabase")
+        ):
+            self.DB.ResetToDefault()
+            messagebox.showinfo(
+                self.Lang.Get("Msg_Success"),
+                self.Lang.Get("Msg_DatabaseResetSuccess")
+            )
+            self.UpdateAllComboboxes()
+    
+    def ShowCurrentDatabase(self):
+        """显示当前数据库路径"""
+        CurrentPath = self.DB.CurrentDatabasePath
+        if CurrentPath:
+            messagebox.showinfo(
+                self.Lang.Get("MenuItem_CurrentDatabase"),
+                self.Lang.Get("Msg_CurrentDatabasePath") + "\n" + CurrentPath
+            )
+    
+    def UpdateAllComboboxes(self):
+        """更新所有下拉框的数据"""
+        # 更新基本信息标签页的下拉框
+        if hasattr(self, 'ProducesEntry'):
+            self.ProducesEntry['values'] = self.DB.Get("Units")
+        if hasattr(self, 'CanCarryEntry'):
+            self.CanCarryEntry['values'] = self.DB.Get("Units")
+        if hasattr(self, 'HostUnitEntry'):
+            self.HostUnitEntry['values'] = self.DB.Get("Units")
+        if hasattr(self, 'WeaponNameEntry'):
+            self.WeaponNameEntry['values'] = self.DB.Get("Weapon")
+        if hasattr(self, 'RadarEntry'):
+            self.RadarEntry['values'] = self.DB.Get("Radar")
+        if hasattr(self, 'ModifierNameEntry'):
+            self.ModifierNameEntry['values'] = self.DB.Get("Modifier")
+        if hasattr(self, 'UpgradeTechEntry'):
+            self.UpgradeTechEntry['values'] = self.DB.Get("Tech")
     
     def ImportConfig(self):
         """导入配置"""
