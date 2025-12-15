@@ -11,6 +11,7 @@ from tkinter import filedialog
 import json
 import csv
 import os
+import sys
 
 # ============================================================================
 # 多语言支持模块
@@ -26,7 +27,15 @@ class LanguageManager:
     
     def LoadLanguageFiles(self):
         """加载语言文件"""
-        LanguageDir = os.path.join(os.path.dirname(__file__), "Languages")
+        # 获取可执行文件所在目录（兼容编译后的程序）
+        if getattr(sys, 'frozen', False):
+            # 如果是编译后的程序
+            BaseDir = os.path.dirname(sys.executable)
+        else:
+            # 如果是源代码运行
+            BaseDir = os.path.dirname(__file__)
+        
+        LanguageDir = os.path.join(BaseDir, "Languages")
         if not os.path.exists(LanguageDir):
             os.makedirs(LanguageDir)
             self.CreateDefaultLanguageFiles(LanguageDir)
@@ -364,7 +373,15 @@ class DatabaseManager:
     """数据库管理器 - 用于自动补全"""
     
     def __init__(self):
-        self.DatabaseDir = os.path.join(os.path.dirname(__file__), "Database")
+        # 获取可执行文件所在目录（兼容编译后的程序）
+        if getattr(sys, 'frozen', False):
+            # 如果是编译后的程序
+            BaseDir = os.path.dirname(sys.executable)
+        else:
+            # 如果是源代码运行
+            BaseDir = os.path.dirname(__file__)
+        
+        self.DatabaseDir = os.path.join(BaseDir, "Database")
         self.CurrentDatabasePath = None
         self.ConfigFile = os.path.join(self.DatabaseDir, "database_config.json")
         self.Data = {
@@ -2084,21 +2101,26 @@ class UnitCodeGeneratorApp:
         StateFrame = ttk.LabelFrame(Frame, text=self.Lang.Get("Group_StateSettings"))
         StateFrame.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
         
-        # 状态名称
+        # 第一行：启用特殊状态复选框
+        self.EnableSpecialStateVar = tk.BooleanVar()
+        ttk.Checkbutton(StateFrame, text=self.Lang.Get("Label_EnableSpecialState"), 
+                       variable=self.EnableSpecialStateVar).grid(row=0, column=0, columnspan=2, padx=10, pady=5, sticky="w")
+        
+        # 状态名称（行号从1开始）
         StateFields = [
-            ("HighState", "Label_HighStateName", 0),
-            ("LowState", "Label_LowStateName", 1),
-            ("TimeToHighState", "Label_TimeToHighState", 2),
-            ("TimeToLowState", "Label_TimeToLowState", 3),
-            ("HighStateStringIDX", "Label_HighStateStringIDX", 4),
-            ("LowStateStringIDX", "Label_LowStateStringIDX", 5),
-            ("StateStringIDX", "Label_StateStringIDX", 6),
-            ("StateIcon", "Label_StateIcon", 7),
-            ("ToHighStateIcon", "Label_ToHighStateIcon", 8),
-            ("ToLowStateIcon", "Label_ToLowStateIcon", 9),
-            ("ToHighStateProcessingStringIDX", "Label_ToHighStateProcessingStringIDX", 10),
-            ("ToLowStateProcessingStringIDX", "Label_ToLowStateProcessingStringIDX", 11),
-            ("AutoOnRestDelay", "Label_AutoOnRestDelay", 12)
+            ("HighState", "Label_HighStateName", 1),
+            ("LowState", "Label_LowStateName", 2),
+            ("TimeToHighState", "Label_TimeToHighState", 3),
+            ("TimeToLowState", "Label_TimeToLowState", 4),
+            ("HighStateStringIDX", "Label_HighStateStringIDX", 5),
+            ("LowStateStringIDX", "Label_LowStateStringIDX", 6),
+            ("StateStringIDX", "Label_StateStringIDX", 7),
+            ("StateIcon", "Label_StateIcon", 8),
+            ("ToHighStateIcon", "Label_ToHighStateIcon", 9),
+            ("ToLowStateIcon", "Label_ToLowStateIcon", 10),
+            ("ToHighStateProcessingStringIDX", "Label_ToHighStateProcessingStringIDX", 11),
+            ("ToLowStateProcessingStringIDX", "Label_ToLowStateProcessingStringIDX", 12),
+            ("AutoOnRestDelay", "Label_AutoOnRestDelay", 13)
         ]
         
         for Key, LabelKey, Row in StateFields:
@@ -2351,36 +2373,199 @@ class UnitCodeGeneratorApp:
         """清除所有数据"""
         if messagebox.askokcancel(self.Lang.Get("Msg_Warning"), 
                                    self.Lang.Get("Msg_ConfirmClear")):
+            # 清除基本信息
             for Var in self.BasicInfoVars.values():
                 Var.set("")
+            
+            # 清除自定义参数
             for Item in self.CustomParamsTable.get_children():
                 self.CustomParamsTable.delete(Item)
+            
+            # 清除行为控制
+            for VarData in self.BehaviorVars.values():
+                VarData["Var"].set(False)
+            
+            # 清除生产单位
+            for Item in self.ProducesTable.get_children():
+                self.ProducesTable.delete(Item)
+            
+            # 清除搭载单位
+            for Item in self.CanCarryTable.get_children():
+                self.CanCarryTable.delete(Item)
+            
+            # 清除航线配置
+            for Item in self.AirwayTable.get_children():
+                self.AirwayTable.delete(Item)
+            
+            # 清除子单位配置
+            for Item in self.HostTable.get_children():
+                self.HostTable.delete(Item)
+            
+            # 清除武器配置
+            # 保留Default配置但清空其武器列表
+            self.ConfigData = {
+                "Default": {"Default": False, "OnlyFull": False, "Weapons": []}
+            }
+            # 清除配置表格（保留Default）
+            for Item in self.ConfigTable.get_children():
+                Values = self.ConfigTable.item(Item, "values")
+                if Values and Values[0] != "Default":
+                    self.ConfigTable.delete(Item)
+            # 更新Default配置的显示
+            for Item in self.ConfigTable.get_children():
+                Values = self.ConfigTable.item(Item, "values")
+                if Values and Values[0] == "Default":
+                    self.ConfigTable.item(Item, values=("Default", "", ""))
+                    break
+            # 清除武器表格
+            for Item in self.WeaponTable.get_children():
+                self.WeaponTable.delete(Item)
+            # 清空武器输入框
+            self.ClearWeaponInputs()
+            # 清空配置输入框
+            self.ConfigNameEntry.delete(0, tk.END)
+            self.ConfigDefaultVar.set(False)
+            self.ConfigOnlyFullVar.set(False)
+            
+            # 清除雷达配置
+            for Item in self.RadarTable.get_children():
+                self.RadarTable.delete(Item)
+            self.RadarEntry.delete(0, tk.END)
+            
+            # 清除修改器配置
+            for Item in self.ModifierTable.get_children():
+                self.ModifierTable.delete(Item)
+            self.ModifierNameEntry.delete(0, tk.END)
+            
+            # 清除状态切换
+            if hasattr(self, 'EnableSpecialStateVar'):
+                self.EnableSpecialStateVar.set(False)
+            for Var in self.StateVars.values():
+                if hasattr(Var, 'set'):
+                    Var.set("")
+            
+            # 清除升级项
+            for Item in self.UpgradeTable.get_children():
+                self.UpgradeTable.delete(Item)
+            self.UpgradeData.clear()
+            self.ClearUpgradeInputs()
     
     def FillDefault(self):
         """填充默认值"""
         if messagebox.askokcancel(self.Lang.Get("Msg_Warning"),
                                    self.Lang.Get("Msg_ConfirmDefault")):
             self.ClearAll()
-            # 填充默认值示例
+            
+            # 填充基本信息
             Defaults = {
-                "GlobalName": "NameExample",
-                "Tech": "U_TechExample",
+                "GlobalName": "TestUnit",
+                "Tech": "U_TestUnit",
                 "Type": "Ground",
                 "Class": "UC_Ground",
                 "Movie": "Units/Images/[Type]/Topdown/Example.midx",
                 "AbstractMovie": "Units/Images/[Type]/Abstract/Example.midx",
                 "Model": "Units/Images/[Type]/Example.midx",
                 "Icon": "Units/Images/Icons/[Type]/Example.png",
-                "DrawSize": "25",
-                "Power": "10",
-                "Size": "0.5",
-                "Speed": "60",
-                "TurnSpeed": "30",
-                "ProductionCost": "0.5"
+                "DrawSize": "20",
+                "AbstractDrawSize": "35",
+                "Sound": "1024",
+                "SoundVolume": "0.5",
+                "Power": "100",
+                "Speed": "100",
+                "TurnSpeed": "32",
+                "Size": "0.0625",
+                "SelfDestruct": "2",
+                "HangarMaxLoad": "4"
             }
             for Key, Value in Defaults.items():
                 if Key in self.BasicInfoVars:
                     self.BasicInfoVars[Key].set(Value)
+            
+            # 填充行为控制
+            BehaviorDefaults = {
+                "FixedRotationAngle": True,
+                "AttackerInPlanner": True,
+                "HiddenFromAllies": True,
+                "AttackIfDestroyed": True,
+                "CanAccessGlobalStorage": False,
+                "AlwaysVisibleOnEnemyTerritory": False
+            }
+            for VarName, Value in BehaviorDefaults.items():
+                if VarName in self.BehaviorVars:
+                    self.BehaviorVars[VarName]["Var"].set(Value)
+            
+            # 填充生产单位
+            ProducesUnits = ["TestUnit1", "TestUnit2"]
+            for Unit in ProducesUnits:
+                self.ProducesTable.insert("", tk.END, values=(Unit,))
+            
+            # 填充可搭载单位
+            CanCarryUnits = ["TestUnit3", "TestUnit4"]
+            for Unit in CanCarryUnits:
+                self.CanCarryTable.insert("", tk.END, values=(Unit,))
+            
+            # 填充航线配置
+            Airways = [("1", "180"), ("1", "90")]
+            for Launch, Time in Airways:
+                self.AirwayTable.insert("", tk.END, values=(Launch, Time))
+            
+            # 填充子单位配置
+            HostAircrafts = [
+                ("TestHelicopter", "2", "", "2", "√"),
+                ("TestHeli2", "2", "2", "2", "√")
+            ]
+            for Unit, Count, Airway, Patrol, AutoPatrol in HostAircrafts:
+                self.HostTable.insert("", tk.END, values=(Unit, Count, Airway, Patrol, AutoPatrol))
+            
+            # 填充武器配置
+            # 创建ConfigExample配置
+            ConfigName = "ConfigExample"
+            self.ConfigData[ConfigName] = {
+                "Default": True,
+                "OnlyFull": False,
+                "Weapons": [
+                    {
+                        "Name": "TestWeapon1",
+                        "Count": "1",
+                        "Launch": "",
+                        "Time": "600",
+                        "AutoEngage": False,
+                        "Principal": False,
+                        "DefaultOff": False
+                    },
+                    {
+                        "Name": "TestWeapon2",
+                        "Count": "1",
+                        "Launch": "",
+                        "Time": "600",
+                        "AutoEngage": False,
+                        "Principal": False,
+                        "DefaultOff": False
+                    }
+                ]
+            }
+            self.ConfigTable.insert("", tk.END, values=(ConfigName, "√", ""))
+            
+            # 填充雷达
+            self.RadarTable.insert("", tk.END, values=("TestRadar",))
+            
+            # 填充修改器
+            self.ModifierTable.insert("", tk.END, values=("BM_Accuracy_Damage_Penalty",))
+            
+            # 填充升级项
+            UpgradeItems = [
+                ("T_Tech1", "", "√", "AttackDelay", "0.35"),
+                ("T_Tech2", "√", "", "Size", "0.99")
+            ]
+            for Tech, SetChecked, AddChecked, Property, Value in UpgradeItems:
+                self.UpgradeTable.insert("", tk.END, values=(Tech, SetChecked, AddChecked, Property, Value))
+                self.UpgradeData[f"{Tech}_{Property}"] = {
+                    "Tech": Tech,
+                    "Set": SetChecked == "√",
+                    "Add": AddChecked == "√",
+                    "Property": Property,
+                    "Value": Value
+                }
     
     def GenerateCode(self):
         """生成代码"""
@@ -2731,7 +2916,14 @@ class UnitCodeGeneratorApp:
     
     def BuildStateCode(self):
         """生成状态切换代码"""
+        # 检查是否启用特殊状态
+        if not hasattr(self, 'EnableSpecialStateVar') or not self.EnableSpecialStateVar.get():
+            return []  # 未勾选，不生成任何状态切换代码
+        
         Lines = []
+        
+        # 首先添加 SpecialState Yes
+        Lines.append('    SpecialState Yes')
         
         # 状态名称字段
         StateFields = [

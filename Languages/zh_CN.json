@@ -144,6 +144,7 @@
     "Label_ToHighStateProcessingStringIDX": "高状态处理字符串:",
     "Label_ToLowStateProcessingStringIDX": "低状态处理字符串:",
     "Label_AutoOnRestDelay": "切换高状态延迟:",
+    "Label_EnableSpecialState": "启用特殊状态",
     "Label_RetreatShift": "撤退状态:",
     "Label_AttackShift": "攻击状态:",
     "Label_DefenceShift": "防御状态:",

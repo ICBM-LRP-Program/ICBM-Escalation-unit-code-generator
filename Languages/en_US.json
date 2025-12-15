@@ -144,6 +144,7 @@
     "Label_ToHighStateProcessingStringIDX": "High State Processing String:",
     "Label_ToLowStateProcessingStringIDX": "Low State Processing String:",
     "Label_AutoOnRestDelay": "Switch to High State Delay:",
+    "Label_EnableSpecialState": "Enable Special State",
     "Label_RetreatShift": "Retreat State:",
     "Label_AttackShift": "Attack State:",
     "Label_DefenceShift": "Defence State:",
