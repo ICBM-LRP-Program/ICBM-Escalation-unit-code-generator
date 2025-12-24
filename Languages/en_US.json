@@ -222,5 +222,15 @@
     "Behavior_Slave": "Slave to Parent Unit",
     "Behavior_NoAutoDeploy": "No Auto Deploy",
     "Behavior_ExecuteOrdersWhenBesieged": "Execute Orders When Besieged",
-    "Behavior_HideAbstract": "Hide Abstract View"
+    "Behavior_HideAbstract": "Hide Abstract View",
+    "MenuItem_SelectDatabase": "Select the database folder...",
+    "MenuItem_ResetDatabase": "Reset to default database",
+    "MenuItem_CurrentDatabase": "Current database",
+    "Msg_SelectDatabaseFolder": "Please select the folder containing the database CSV file.",
+    "Msg_DatabaseLoadSuccess": "Database loaded successfully!",
+    "Msg_DatabaseLoadFailed": "Database loading failed",
+    "Msg_MissingDatabaseFiles": "The following database files are missing:",
+    "Msg_DatabaseResetSuccess": "Reset to the default database",
+    "Msg_CurrentDatabasePath": "Current database path:",
+    "Msg_ConfirmResetDatabase": "Are you sure you want to reset to the default database? \nThis will discard the current database selection."
 }
